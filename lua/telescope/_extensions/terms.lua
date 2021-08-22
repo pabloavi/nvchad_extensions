@@ -110,15 +110,15 @@ local function term_picker(opts)
                if type == "wind" then
                   -- swtich to term buff & show in bufferline
                   vim.cmd(string.format("b %d | setlocal bl", buf))
-                  -- vim.cmd('startinsert') TODO fix this
                elseif type == "vert" then
                   vim.cmd(string.format("vsp #%d", buf))
-                  -- vim.cmd('startinsert') TODO fix this
                elseif type == "hori" then
                   -- TODO change 15 to a chad config var number
                   vim.cmd(string.format("15 sp #%d ", buf))
-                  -- vim.cmd('startinsert') TODO fix this
                end
+               vim.defer_fn(function()
+                  vim.cmd "startinsert"
+               end, 0)
             end
          end)
 

@@ -83,7 +83,7 @@ M.list_themes = function(return_type)
          if name == nil then
             break
          end
-         if typ ~= "directory" and string.find(name, ".lua") then
+         if typ ~= "directory" and string.find(name, ".lua$") then
             -- return the table values as keys if specified
             if return_type == "keys_as_value" then
                themes[vim.fn.fnamemodify(name, ":r")] = true

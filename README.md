@@ -8,10 +8,13 @@ This repository contains the core utilities for [NvChad](https://github.com/NvCh
 .
 ├── LICENSE
 ├── lua
-│   ├── chad_reload
-│   │   └── init.lua
 │   ├── nvchad
-│   │   └── init.lua
+│   │   ├── change_theme.lua
+│   │   ├── init.lua
+│   │   ├── reload_config.lua
+│   │   ├── reload_theme.lua
+│   │   ├── toggle_theme.lua
+│   │   └── update_nvchad.lua
 │   └── telescope
 │       └── _extensions
 │           ├── terms.lua

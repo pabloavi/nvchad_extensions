@@ -203,9 +203,9 @@ function M.Restart()
    -- Setting Theme
    M.set_theme()
    -- Source init files
-   cmd "source ~/.config/nvim/lua/chadrc.lua"
-   cmd "source ~/.config/nvim/lua/plugins/init.lua"
-   cmd "source ~/.config/nvim/lua/colors/init.lua"
+   cmd "luafile ~/.config/nvim/lua/chadrc.lua"
+   cmd "luafile ~/.config/nvim/lua/plugins/init.lua"
+   cmd "luafile ~/.config/nvim/lua/colors/init.lua"
    -- Installing  or Cleaning on changes
    cmd "PackerClean"
    cmd "PackerInstall"

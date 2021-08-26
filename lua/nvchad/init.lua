@@ -106,8 +106,9 @@ M.reload_plugin = function(plugins)
       if loaded then
          package.loaded[plugin] = nil
       end
-      if not pcall(require, plugin) then
-         print("Error: Cannot load " .. plugin .. " plugin!")
+      local ok, err = pcall(require, plugin)
+      if not ok then
+         print("Error: Cannot load " .. plugin .. " plugin!\n" .. err .. "\n")
          status = false
       end
    end
@@ -142,12 +143,10 @@ M.reload_theme = function(theme_name)
    -- reload the base16 theme and highlights
    require("colors").init(theme_name)
 
-   if
-      not reload_plugin {
-         "plugins.configs.bufferline",
-         "plugins.configs.statusline",
-      }
-   then
+   if not reload_plugin {
+      "plugins.configs.bufferline",
+      "plugins.configs.statusline",
+   } then
       print "Error: Not able to reload all plugins."
       return false
    end

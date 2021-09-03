@@ -117,7 +117,7 @@ local function term_picker(opts)
                   vim.cmd(string.format("15 sp #%d ", buf))
                end
                vim.defer_fn(function()
-                  vim.cmd "startinsert"
+                  vim.cmd "setlocal nonumber norelativenumber | startinsert"
                end, 0)
             end
          end)

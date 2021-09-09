@@ -48,7 +48,7 @@ end
 M.list_themes = function(return_type)
    local themes = {}
    -- folder where theme files are stored
-   local themes_folder = vim.fn.stdpath "config" .. "/lua/colors/themes"
+   local themes_folder = vim.fn.stdpath "data" .. "/site/pack/packer/opt/nvim-base16.lua/lua/hl_themes"
    -- list all the contents of the folder and filter out files with .lua extension, then append to themes table
    local fd = vim.loop.fs_scandir(themes_folder)
    if fd then

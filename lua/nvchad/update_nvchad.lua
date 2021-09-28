@@ -2,7 +2,7 @@ local function update()
    -- in all the comments below, config means user config
    local config_path = vim.fn.stdpath "config"
    local config_name = vim.g.nvchad_user_config or "chadrc"
-   local config_file = config_path .. "/lua/" .. config_name .. ".lua"
+   local config_file = config_path .. "/lua/custom/" .. config_name .. ".lua"
    -- generate a random file name
    local config_file_backup = config_path .. "/" .. config_name .. ".lua.bak." .. math.random()
    local utils = require "nvchad"

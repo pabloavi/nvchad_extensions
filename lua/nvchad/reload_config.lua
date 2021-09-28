@@ -187,7 +187,7 @@ function M.Reload()
 end
 
 function M.set_theme()
-   local theme = require("chadrc").ui.theme
+   local theme = require("custom.chadrc").ui.theme
    require("nvchad").reload_theme(theme)
 end
 
@@ -203,7 +203,7 @@ function M.Restart()
    -- Setting Theme
    M.set_theme()
    -- Source init files
-   cmd "luafile ~/.config/nvim/lua/chadrc.lua"
+   cmd "luafile ~/.config/nvim/lua/custom/chadrc.lua"
    cmd "luafile ~/.config/nvim/lua/plugins/init.lua"
    cmd "luafile ~/.config/nvim/lua/colors/init.lua"
    -- Installing  or Cleaning on changes

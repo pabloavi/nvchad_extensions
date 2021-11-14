@@ -1,10 +1,9 @@
 local function update()
    -- in all the comments below, config means user config
    local config_path = vim.fn.stdpath "config"
-   local config_name = vim.g.nvchad_user_config or "chadrc"
-   local config_file = config_path .. "/lua/custom/" .. config_name .. ".lua"
+   local config_file = config_path .. "/lua/custom/" .. "chadrc.lua"
    -- generate a random file name
-   local config_file_backup = config_path .. "/" .. config_name .. ".lua.bak." .. math.random()
+   local config_file_backup = config_path .. "/" .. "chadrc.lua.bak." .. math.random()
    local utils = require "nvchad"
    local echo = utils.echo
    local current_config = require("core.utils").load_config()
@@ -72,7 +71,7 @@ local function update()
          "WarningMsg",
       },
 
-      { config_name },
+      { "chadrc" },
       { " will be lost!\n\nUpdate NvChad ? [y/N]", "WarningMsg" },
    }
 
@@ -94,8 +93,8 @@ local function update()
          -- config restored succesfully, remove backup file that was created
          rm_backup()
       else
-         echo { { "Error: Restoring " .. config_name .. " failed.\n", "ErrorMsg" } }
-         echo { { "Backed up " .. config_name .. " path: " .. config_file_backup .. "\n\n", "None" } }
+         echo { { "Error: Restoring " .. "chadrc failed.\n", "ErrorMsg" } }
+         echo { { "Backed up " .. "chadrc path: " .. config_file_backup .. "\n\n", "None" } }
       end
 
       -- close the terminal buffer only if update was success, as in case of error, we need the error message

@@ -70,9 +70,6 @@ M.list_themes = function(return_type)
    return themes
 end
 
--- reload whole config without exiting nvim
-M.reload_config = require "nvchad.reload_config"
-
 -- reload a plugin ( will try to load even if not loaded)
 -- can take a string or list ( table )
 -- return true or false

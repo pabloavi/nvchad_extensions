@@ -8,8 +8,7 @@ local function change_theme(current_theme, new_theme)
    end
 
    local file_fn = require("nvchad").file
-   local user_config = vim.g.nvchad_user_config
-   local file = vim.fn.stdpath "config" .. "/lua/custom/" .. user_config .. ".lua"
+   local file = vim.fn.stdpath "config" .. "/lua/custom/" .. "chadrc.lua"
 
    -- store in data variable
    local data = assert(file_fn("r", file))

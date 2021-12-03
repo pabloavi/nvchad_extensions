@@ -192,9 +192,9 @@ local function display_cheatsheet(mappings)
    vim.api.nvim_buf_set_option(buf, "modifiable", false)
 end
 
-local cheat = {}
+local cheatsheet = {}
 
-cheat.showCheatsheet = function()
+cheatsheet.show = function()
    local mappings = require("core.utils").load_config().mappings
    local pluginMappings = mappings.plugins
    mappings.plugins = nil
@@ -205,4 +205,4 @@ cheat.showCheatsheet = function()
    }
 end
 
-return cheat
+return cheatsheet 

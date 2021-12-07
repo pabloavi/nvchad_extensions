@@ -101,10 +101,6 @@ end
 -- if no theme name given then reload the current theme
 M.reload_theme = require "nvchad.reload_theme"
 
--- toggle between 2 themes
--- argument should be a table with 2 theme names
-M.toggle_theme = require "nvchad.toggle_theme"
-
 -- update nvchad
 M.update_nvchad = require "nvchad.update_nvchad"
 

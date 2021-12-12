@@ -205,4 +205,4 @@ cheatsheet.show = function()
    }
 end
 
-return cheatsheet 
+return cheatsheet

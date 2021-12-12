@@ -58,16 +58,12 @@ local function theme_switcher(opts)
       else
          -- show current buffer content in previewer
          previewer = previewers.new_buffer_previewer {
-            get_buffer_by_name = function()
-               return bufname
-            end,
             define_preview = function(self, entry)
-               if vim.loop.fs_stat(bufname) then
-                  conf.buffer_previewer_maker(bufname, self.state.bufnr, { bufname = self.state.bufname })
-               else
-                  local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
-                  vim.api.nvim_buf_set_lines(self.state.bufnr, 0, -1, false, lines)
-               end
+               local lines = vim.api.nvim_buf_get_lines(bufnr, 0, -1, false)
+               vim.api.nvim_buf_set_lines(self.state.bufnr, 0, -1, false, lines)
+               local filetype = require("plenary.filetype").detect(bufname) or "diff"
+
+               require("telescope.previewers.utils").highlighter(self.state.bufnr, filetype)
                reload_theme(entry.value)
             end,
          }

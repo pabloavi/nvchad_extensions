@@ -1,9 +1,6 @@
 local function update()
    -- in all the comments below, config means user config
    local config_path = vim.fn.stdpath "config"
-   local config_file = config_path .. "/lua/custom/" .. "chadrc.lua"
-   -- generate a random file name
-   local config_file_backup = config_path .. "/" .. "chadrc.lua.bak." .. math.random()
    local utils = require "nvchad"
    local echo = utils.echo
    local current_config = require("core.utils").load_config()
@@ -25,20 +22,6 @@ local function update()
       )
    end
 
-   local function rm_backup()
-      if not pcall(os.remove, config_file_backup) then
-         echo { { "Warning: Failed to remove backup chadrc, remove manually.", "WarningMsg" } }
-         echo { { "Path: ", "WarningMsg" }, { config_file_backup } }
-      end
-   end
-
-   -- first try to fetch contents of config, this will make sure it is readable and taking backup of its contents
-   local config_contents = utils.file("r", config_file)
-   -- also make a local backup in ~/.config/nvim, will be removed when config is succesfully restored
-   utils.file("w", config_file_backup, config_contents)
-   -- write original config file with its contents, will make sure charc is writable, this maybe overkill but a little precaution always helps
-   utils.file("w", config_file, config_contents)
-
    -- save the current sha and check if config folder is a valid git directory
    local valid_git_dir = true
    current_sha = vim.fn.system("git -C " .. config_path .. " rev-parse HEAD")
@@ -55,7 +38,6 @@ local function update()
 
    if not valid_git_dir then
       restore_repo_state()
-      rm_backup()
       echo { { "Error: " .. config_path .. " is not a git directory.\n" .. current_sha .. backup_sha, "ErrorMsg" } }
       return
    end
@@ -63,40 +45,33 @@ local function update()
    -- ask the user for confirmation to update because we are going to run git reset --hard
    echo { { "Url: ", "Title" }, { update_url } }
    echo { { "Branch: ", "Title" }, { update_branch } }
-   echo {
-      { "\nUpdater will run", "WarningMsg" },
-      { " git reset --hard " },
-      {
-         "in config folder, so changes to existing repo files except ",
-         "WarningMsg",
-      },
+   if backup_sha ~= current_sha then
+      echo {
+         { "\nWarning\n  Modification to repo files detected.\n\n  Updater will run", "WarningMsg" },
+         { " git reset --hard " },
+         {
+            "in config folder, so changes to existing repo files except ",
+            "WarningMsg",
+         },
 
-      { "chadrc" },
-      { " will be lost!\n\nUpdate NvChad ? [y/N]", "WarningMsg" },
-   }
+         { "lua/custom folder" },
+         { " will be lost!\n", "WarningMsg" },
+      }
+   else
+      echo { { "\nNo conflicting changes found, ready to update.", "Title" } }
+   end
+   echo { { "\nUpdate NvChad ? [y/N]", "WarningMsg" } }
 
    local ans = string.lower(vim.fn.input "-> ") == "y"
    utils.clear_cmdline()
    if not ans then
       restore_repo_state()
-      rm_backup()
       echo { { "Update cancelled!", "Title" } }
       return
    end
 
    -- function that will executed when git commands are done
    local function update_exit(_, code)
-      -- restore config file irrespective of whether git commands were succesfull or not
-      if pcall(function()
-         utils.file("w", config_file, config_contents)
-      end) then
-         -- config restored succesfully, remove backup file that was created
-         rm_backup()
-      else
-         echo { { "Error: Restoring " .. "chadrc failed.\n", "ErrorMsg" } }
-         echo { { "Backed up " .. "chadrc path: " .. config_file_backup .. "\n\n", "None" } }
-      end
-
       -- close the terminal buffer only if update was success, as in case of error, we need the error message
       if code == 0 then
          vim.cmd "bd!"

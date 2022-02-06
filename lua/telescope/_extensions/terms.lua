@@ -4,16 +4,14 @@
 -- Most of the code is copied from telescope buffer builtin
 -- Src: https://github.com/nvim-telescope/telescope.nvim/blob/master/lua/telescope/builtin/internal.lua
 local function term_picker(opts)
-   local pickers, finders, previewers, make_entry, actions, action_state, utils, conf
+   local pickers, finders, make_entry, actions, action_state, conf
    if pcall(require, "telescope") then
       pickers = require "telescope.pickers"
       finders = require "telescope.finders"
-      previewers = require "telescope.previewers"
 
       make_entry = require "telescope.make_entry"
       actions = require "telescope.actions"
       action_state = require "telescope.actions.state"
-      utils = require "telescope.utils"
       conf = require("telescope.config").values
    else
       error "Cannot find telescope!"
@@ -21,12 +19,8 @@ local function term_picker(opts)
 
    local filter = vim.tbl_filter
 
-   -- buffer number and name
-   local bufnr = vim.api.nvim_get_current_buf()
-   local bufname = vim.api.nvim_buf_get_name(bufnr)
-
    local bufnrs = filter(function(b)
-      local present_type, type = pcall(function()
+      local present_type, _ = pcall(function()
          return vim.api.nvim_buf_get_var(b, "term_type")
       end)
 

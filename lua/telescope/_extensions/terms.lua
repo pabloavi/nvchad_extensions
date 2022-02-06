@@ -25,6 +25,7 @@ local function term_picker(opts)
       end)
 
       if not present_type then
+         vim.notify "No terminal buffer open."
          -- let's only terms that we created
          return false
       end

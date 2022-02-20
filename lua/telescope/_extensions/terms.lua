@@ -94,6 +94,7 @@ local function term_picker(opts)
             actions.close(prompt_bufnr)
 
             local buf = entry.bufnr
+            print(buf)
 
             local chad_term, type = pcall(function()
                return vim.api.nvim_buf_get_var(buf, "term_type")
@@ -112,6 +113,7 @@ local function term_picker(opts)
                   vim.cmd(string.format("15 sp #%d ", buf))
                end
                vim.defer_fn(function()
+                  vim.api.nvim_set_current_buf(buf)
                   vim.cmd "setlocal nonumber norelativenumber | startinsert"
                end, 0)
             end

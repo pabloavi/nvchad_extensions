@@ -29,6 +29,7 @@ end
 local function on_new_buf()
    local bufs = vim.api.nvim_list_bufs()
    local term_buf_id = bufs[#bufs]
+   vim.api.nvim_buf_set_var(term_buf_id, "term_type", true)
    vim.api.nvim_input "i" --term enter
    return term_buf_id
 end

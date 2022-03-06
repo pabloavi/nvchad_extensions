@@ -66,6 +66,10 @@ local function display_cheatsheet(mappings)
             line_nr = line_nr + 1
 
             for mapping, key in pairs(values) do
+               if type(key) == "boolean" and not key then
+                  goto continue -- the continue tag is at the end of the for loop
+               end
+
                if type(key) == "string" then
                   key = parse_mapping(key)
                   table.insert(
@@ -115,6 +119,7 @@ local function display_cheatsheet(mappings)
                      end
                   end
                end
+               ::continue::
             end
 
             table.insert(lines, spaces(spacing) .. "▙" .. string.rep("▄", 36) .. "▟")

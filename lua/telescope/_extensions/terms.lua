@@ -95,31 +95,13 @@ local function term_picker(opts)
 
             local buf = entry.bufnr
 
-            local chad_term, type = pcall(function()
+            local chad_term, term_opts = pcall(function()
                return vim.api.nvim_buf_get_var(buf, "term_type")
             end)
-
-            -- TODO buffer checks/error detection (make sure we do get a buf)
-
             if chad_term then
-               if type == "wind" then
-                  -- swtich to term buff & show in bufferline
-                  vim.cmd(string.format("b %d | setlocal bl", buf))
-               elseif type == "vertical" then
-                  local size = vim.api.nvim_buf_get_var(buf, "term_size")
-                  vim.cmd(string.format("%d vsp #%d", size, buf))
-               elseif type == "horizontal" then
-                  local size = vim.api.nvim_buf_get_var(buf, "term_size")
-                  -- TODO change 15 to a chad config var number
-                  vim.cmd(string.format("%d sp #%d ", size, buf))
-               end
-               vim.defer_fn(function()
-                  vim.api.nvim_set_current_buf(buf)
-                  vim.cmd "setlocal nonumber norelativenumber | startinsert"
-               end, 0)
+               vim.schedule_wrap(require("core.terminal").new_or_toggle(term_opts))
             end
          end)
-
          return true
       end,
    }):find()

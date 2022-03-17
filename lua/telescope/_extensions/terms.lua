@@ -94,7 +94,6 @@ local function term_picker(opts)
             actions.close(prompt_bufnr)
 
             local buf = entry.bufnr
-            print(buf)
 
             local chad_term, type = pcall(function()
                return vim.api.nvim_buf_get_var(buf, "term_type")
@@ -106,11 +105,13 @@ local function term_picker(opts)
                if type == "wind" then
                   -- swtich to term buff & show in bufferline
                   vim.cmd(string.format("b %d | setlocal bl", buf))
-               elseif type == "vert" then
-                  vim.cmd(string.format("vsp #%d", buf))
-               elseif type == "hori" then
+               elseif type == "vertical" then
+                  local size = vim.api.nvim_buf_get_var(buf, "term_size")
+                  vim.cmd(string.format("%d vsp #%d", size, buf))
+               elseif type == "horizontal" then
+                  local size = vim.api.nvim_buf_get_var(buf, "term_size")
                   -- TODO change 15 to a chad config var number
-                  vim.cmd(string.format("15 sp #%d ", buf))
+                  vim.cmd(string.format("%d sp #%d ", size, buf))
                end
                vim.defer_fn(function()
                   vim.api.nvim_set_current_buf(buf)

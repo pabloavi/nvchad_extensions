@@ -24,11 +24,11 @@ local get_cmds = function(direction)
       },
       vertical = {
          existing = "rightbelow split",
-         new = "botright " .. dims.vertical .. " vsplit",
+         new = dims.vertical .. " vsplit",
          resize = "vertical resize",
       },
    }
-   return cmds, dims
+   return cmds
 end
 
 local function on_new_buf(opts)
@@ -50,8 +50,7 @@ local function spawn(spawn_cmd, type, opts)
    return type == "win" and on_new_win() or type == "buf" and on_new_buf(opts)
 end
 
-M.new_or_toggle = function(direction, size)
-   local window_opts = size or chadterms.winsize[direction]
+M.new_or_toggle = function(direction)
    local cmds = get_cmds(direction)
 
    local function new_term()

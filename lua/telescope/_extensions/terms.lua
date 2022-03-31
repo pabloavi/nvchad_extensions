@@ -99,7 +99,7 @@ local function term_picker(opts)
                return vim.api.nvim_buf_get_var(buf, "term_type")
             end)
             if chad_term then
-               vim.schedule_wrap(require("core.terminal").new_or_toggle(term_opts))
+               vim.schedule_wrap(require("nvchad.terminal").new_or_toggle(term_opts))
             end
          end)
          return true

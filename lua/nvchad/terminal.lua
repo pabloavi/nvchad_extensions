@@ -1,17 +1,32 @@
 local M = {}
 
-
 local chadterms = {
-   types = {"horizontal", "vertical"},
+   types = {"horizontal", "vertical", "float"},
    horizontal = {},
    vertical = {},
+   float = {},
    last = nil,
-   winsize = {vertical=.5, horizontal=.5},
+   winsize = {
+     vertical=.5,
+     horizontal=.5,
+   },
    location = {
       horizontal = "rightbelow",
       vertical = "rightbelow",
+      float = {}
    }
 }
+
+local calc_float_opts = function(opts)
+  return {
+    relative = "editor",
+    width = math.ceil(opts.width*vim.o.columns),
+    height = math.ceil(opts.height*vim.o.lines),
+    row = math.floor(opts.row*vim.o.lines),
+    col = math.floor(opts.col*vim.o.columns),
+    border = opts.border,
+  }
+end
 
 local add_term = function (direction, term)
    table.insert(chadterms[direction], term)
@@ -26,9 +41,10 @@ local get_cmds = function(direction)
    end
    local term_cmds = function (dims)
       if direction == "horizontal" then
-         return {new = chadterms.location.horizontal .. dims .. " split" }
+         return { new = chadterms.location.horizontal .. dims .. " split" }
+      elseif direction == "vertical" then
+         return { new = chadterms.location.vertical .. dims .. " vsplit" }
       end
-      return { new = chadterms.location.vertical .. dims .. " vsplit" }
    end
    return term_cmds(get_dims()).new
 end
@@ -39,12 +55,13 @@ end
 
 M.hide_term = function (term)
    term.open = false
-   vim.api.nvim_win_hide(term.win)
+   vim.api.nvim_win_close(term.win, false)
 end
 
 M.show_term = function (term)
    term.open = true
-   vim.cmd(get_cmds(term.type))
+   if term.type ~= "float" then vim.cmd(get_cmds(term.type))
+   else vim.api.nvim_open_win(0, true, calc_float_opts(chadterms.location.float)) end
    term.win = vim.api.nvim_get_current_win()
    vim.api.nvim_set_current_win(term.win)
    vim.api.nvim_set_current_buf(term.buf)
@@ -63,7 +80,8 @@ end
 
 M.new = function (direction)
    local create_term = function ()
-      vim.cmd(get_cmds(direction))
+      if direction ~= "float" then vim.cmd(get_cmds(direction))
+      else vim.api.nvim_open_win(0, true, calc_float_opts(chadterms.location.float)) end
       local win = vim.api.nvim_get_current_win()
       local buf = vim.api.nvim_create_buf(false, true)
       return { win = win, buf = buf, open = true, type=direction }
@@ -102,7 +120,7 @@ local config_handler = function(config)
    behavior_handler(config["behavior"])
    chadterms.winsize["horizontal"] = config.window.split_ratio or .5
    chadterms.winsize["vertical"] = config.window.vsplit_ratio or .5
-   chadterms.location = config.location or chadterms.location
+   for k, v in pairs(config.location) do chadterms.location[k] = v end
 end
 
 M.init = function()

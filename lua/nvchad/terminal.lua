@@ -98,6 +98,10 @@ local verify_terminals = function ()
       chadterms[type] = vim.tbl_filter(function(term)
          return vim.api.nvim_buf_is_valid(term.buf)
       end, chadterms[type])
+      chadterms[type] = vim.tbl_map(function(term)
+         term.open = vim.api.nvim_win_is_valid(term.win)
+         return term
+      end, chadterms[type])
    end
 end
 

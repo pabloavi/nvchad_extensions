@@ -20,8 +20,10 @@ local function term_picker(opts)
    local filter = vim.tbl_filter
 
    local bufnrs = filter(function(b)
-      local present_type, _ = pcall(function()
-         return vim.api.nvim_buf_get_var(b, "term_type")
+      local _, present_type = pcall(function()
+         return vim.api.nvim_buf_call(b, function ()
+           return vim.bo.buftype == "terminal"
+         end)
       end)
 
       if not present_type then
@@ -94,26 +96,17 @@ local function term_picker(opts)
             actions.close(prompt_bufnr)
 
             local buf = entry.bufnr
-
             local chad_term, type = pcall(function()
-               return vim.api.nvim_buf_get_var(buf, "term_type")
+               return vim.api.nvim_buf_call(buf, function ()
+                 return vim.bo.buftype == "terminal"
+               end)
             end)
 
             -- TODO buffer checks/error detection (make sure we do get a buf)
 
             if chad_term then
-               if type == "wind" then
-                  -- swtich to term buff & show in bufferline
-                  vim.cmd(string.format("b %d | setlocal bl", buf))
-               elseif type == "vert" then
-                  vim.cmd(string.format("vsp #%d", buf))
-               elseif type == "hori" then
-                  -- TODO change 15 to a chad config var number
-                  vim.cmd(string.format("15 sp #%d ", buf))
-               end
-               vim.defer_fn(function()
-                  vim.cmd "setlocal nonumber norelativenumber | startinsert"
-               end, 0)
+               local term_plugin = require('nvterm.terminal')
+               term_plugin.get_and_show('buf', buf)
             end
          end)
 

@@ -6,7 +6,7 @@ local function update()
   local current_config = require("core.utils").load_config()
   local update_url = current_config.options.nvChad.update_url or "https://github.com/NvChad/NvChad"
   local update_branch = current_config.options.nvChad.update_branch or "main"
-  local current_sha, backup_sha = "", ""
+  local current_sha, backup_sha, remote_sha = "", "", ""
   local function restore_repo_state()
     -- on failing, restore to the last repo state, including untracked files
     vim.fn.system(
@@ -22,13 +22,24 @@ local function update()
     )
   end
 
+  -- get the current sha of the remote HEAD
+  local function get_remote_head(branch)
+    return vim.fn.system("git -C " .. config_path .. " ls-remote --heads origin " .. branch):match("(%w*)")
+  end
+
+  -- get the current sha of the local HEAD
+  local function get_local_head()
+    return vim.fn.system("git -C " .. config_path .. " rev-parse HEAD"):match("(%w*)")
+  end
+
   -- save the current sha and check if config folder is a valid git directory
   local valid_git_dir = true
-  current_sha = vim.fn.system("git -C " .. config_path .. " rev-parse HEAD")
+  current_sha = get_local_head()
+  remote_sha = get_remote_head(update_branch)
 
   if vim.api.nvim_get_vvar "shell_error" == 0 then
     vim.fn.system("git -C " .. config_path .. " commit -a -m 'tmp'")
-    backup_sha = vim.fn.system("git -C " .. config_path .. " rev-parse HEAD")
+    backup_sha = get_local_head()
     if vim.api.nvim_get_vvar "shell_error" ~= 0 then
       valid_git_dir = false
     end
@@ -42,22 +53,65 @@ local function update()
     return
   end
 
+  -- create a dictionary of human readable strings
+  local function get_human_readables(count)
+    local human_readable_dict = {}
+    human_readable_dict["have"] = count > 1 and "have" or "has"
+    human_readable_dict["commits"] = count > 1 and "commits" or "commit"
+    human_readable_dict["change"] = count > 1 and "changes" or "change"
+    return human_readable_dict
+  end
+
+  -- get all commits between two points in the git history as a list of strings
+  local function get_commit_list_by_hash_range(start_hash, end_hash)
+    local commit_list_string = vim.fn.system(
+      "git -C " .. config_path ..
+      " log --oneline --no-merges --decorate --date=short --pretty='format:%ad: %h %s' " ..
+      start_hash .. ".." .. end_hash)
+    return vim.fn.split(commit_list_string, "\n") or nil
+  end
+
+  -- filter string list by keywords
+  local function filter_commit_list(commit_list, keywords)
+    return vim.tbl_filter(function(line)
+      for _, keyword in ipairs(keywords) do
+        -- normalize commit messages
+        local normalized_line = string.lower(line)
+        -- check if the commit message contains any of the breaking change keywords
+        if vim.fn.stridx(normalized_line, keyword) > 0 then
+          return true
+        end
+      end
+      return false
+    end, commit_list) or nil
+  end
+
+  -- prepare the string representation of a commit list and return a list of lists to use with echo
+  local function prepare_commit_table(commit_list)
+    local output = {}
+    for _, line in ipairs(commit_list) do
+      -- split line into date hash and message. Expected format: "yyyy-mm-dd: hash message"
+      local commit_date, commit_hash, commit_message = line:match("(%d%d%d%d%-%d%d%-%d%d): (%w+)(.*)")
+      -- merge commit messages into one output array to minimize echo calls
+      vim.list_extend(output, { { "    " }, { commit_date }, { " " }, { commit_hash, "WarningMsg" },
+        { commit_message, "String" }, { "\n" } })
+    end
+    return output
+  end
+
   -- check for breaking changes in the current branch
-  local function check_for_breaking_changes_and_continue()
-    local keywords = { 'break', 'fix', 'bug', 'merge', 'squash' }
-    local remote_head = vim.fn.system("git -C " .. config_path .. " ls-remote --heads origin " .. update_branch):match("(%w*)")
-    local current_head = vim.fn.system("git -C " .. config_path .. " rev-parse HEAD"):match("(%w*)")
-    local human_readable = {"have", "has", "commits", "commit", "changes", "change"}
+  local function check_for_breaking_changes_and_continue(current_head, remote_head)
+    local breaking_change_keywords = { "breaking_change" }
     local breaking_changes = {}
 
     -- if the remote HEAD is equal to the current HEAD we are already up to date
     if remote_head == current_head then
-      echo { { "You are already up to date with ", "String"}, {  "".. update_branch .. "" },
+      echo { { "You are already up to date with ", "String" }, { "" .. update_branch .. "" },
         { ". There is nothing to do!", "String" } }
       return false
     end
 
-    echo { { "Fetching changes from remote..", "String" } }
+    echo { { "Fetching new changes from remote..", "String" } }
 
     -- fetch remote silently
     vim.fn.system("git -C " .. config_path ..
@@ -66,17 +120,13 @@ local function update()
     echo { { "Analyzing commits...", "String" } }
 
     -- get all new commits
-    local new_commits = vim.fn.system(
-      "git -C " .. config_path ..
-      " log --oneline --no-merges --decorate --date=short --pretty='format:%ad: %h %s' " ..
-      current_head .. ".." .. remote_head
-    )
+    local new_commit_list = get_commit_list_by_hash_range(current_head, remote_head)
 
     -- if we did not receive any new commits, we encountered an error
-    if new_commits == "" then
-        echo { { "\nSomething went wrong. No new commits were received even though the remote's HEAD differs from the " ..
+    if new_commit_list == nil then
+      echo { { "\nSomething went wrong. No new commits were received even though the remote's HEAD differs from the " ..
           "currently checked out HEAD. Would you still like to continue with the update? [y/N]", "WarningMsg" } }
-        local continue = string.lower(vim.fn.input("-> ")) == "y"
+      local continue = string.lower(vim.fn.input("-> ")) == "y"
       if continue then
         utils.clear_cmdline()
         echo { { "\n\nUpdating...\n\n", "String" } }
@@ -90,43 +140,28 @@ local function update()
     end
 
     -- check if there are any breaking changes
-    local new_commits_list = vim.fn.split(new_commits, "\n")
-    breaking_changes = vim.tbl_filter(function(line)
-      for _, keyword in ipairs(keywords) do
-        -- normalize commit messages
-        local normalized_line = string.lower(line)
-        -- check if the commit message contains any of the breaking change keywords
-        if vim.fn.stridx(normalized_line, keyword) > 0 then
-          return true
-        end
-      end
-      return false
-    end, new_commits_list)
+    breaking_changes = filter_commit_list(new_commit_list, breaking_change_keywords)
 
-    -- create human redable wording
-    local human_readable_have = #breaking_changes > 1 and human_readable[1] or human_readable[2]
-    local human_readable_commits = #breaking_changes > 1 and human_readable[3] or human_readable[4]
-    local human_readable_change = #breaking_changes > 1 and human_readable[5] or human_readable[6]
+    -- get human redable wording
+    local hr = get_human_readables(#new_commit_list)
 
-    echo { { "\nThere ", "Title" }, { human_readable_have, "Title"}, { " been", "Title"},
-      { " " .. #new_commits_list .. " " }, {"new ", "Title"}, { human_readable_commits, "Title" },
-      {" since the last update.", "Title" } }
+    echo { { "\nThere ", "Title" }, { hr["have"], "Title" }, { " been", "Title" },
+      { " " .. #new_commit_list .. " " }, { "new ", "Title" }, { hr["commits"], "Title" },
+      { " since the last update.\n\n", "Title" } }
 
     -- if there are breaking changes, print a list of them
     if #breaking_changes > 0 then
-      echo { { "\nFound", "Title"}, { " " .. #breaking_changes .. " "}, { "potentially breaking ", "Title"},
-        { human_readable_change, "Title" }, { ":\n", "Title" } }
-      for _, line in ipairs(breaking_changes) do
-        -- split line into date hash and message. Expected format: "yyyy-mm-dd: hash message"
-        local commit_date, commit_hash, commit_message = line:match("(%d%d%d%d%-%d%d%-%d%d): (%w+)(.*)")
-        echo { {"    "}, { commit_date }, {" "}, { commit_hash, "WarningMsg" }, { commit_message, "String" } }
-      end
+      local breaking_changes_message = { { "Found", "Title" }, { " " .. #breaking_changes .. " " }, { "potentially breaking ", "Title" },
+        { hr["change"], "Title" }, { ":\n", "Title" } }
+      vim.list_extend(breaking_changes_message, prepare_commit_table(breaking_changes))
+      echo(breaking_changes_message)
+
       -- ask the user if they would like to continue with the update
       echo { { "\nWould you still like to continue with the update? [y/N]", "WarningMsg" } }
       local continue = string.lower(vim.fn.input("-> ")) == "y"
       if continue then
         utils.clear_cmdline()
-        echo { { "\n\nUpdating...\n\n", "String" } }
+        echo { { "\n\n", "String" } }
         return true
       else
         utils.clear_cmdline()
@@ -137,12 +172,11 @@ local function update()
     else
       -- if there are no breaking changes, just update
       utils.clear_cmdline()
-      echo { { "\n\nUpdating...\n\n", "String" } }
       return true
     end
   end
 
-  if not check_for_breaking_changes_and_continue() then
+  if not check_for_breaking_changes_and_continue(current_sha, remote_sha) then
     vim.cmd "bd!"
     return
   end
@@ -179,8 +213,14 @@ local function update()
   local function update_exit(_, code)
     -- close the terminal buffer only if update was success, as in case of error, we need the error message
     if code == 0 then
+      local applied_commit_list = prepare_commit_table(get_commit_list_by_hash_range(current_sha, remote_sha))
+      local summary = { { "Commits:\n", "Title" } }
+      vim.list_extend(summary, applied_commit_list)
+      vim.list_extend(summary, { { "\nNvChad succesfully updated.\n", "String" } })
+
+      -- print the update summary
       vim.cmd "bd!"
-      echo { { "NvChad succesfully updated.\n", "String" } }
+      echo(summary)
     else
       restore_repo_state()
       echo { { "Error: NvChad Update failed.\n", "ErrorMsg" } }

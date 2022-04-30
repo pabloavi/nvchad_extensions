@@ -71,14 +71,15 @@ local function update()
     return vim.fn.split(commit_list_string, "\n") or nil
   end
 
-  -- filter string list by keywords
-  local function filter_commit_list(commit_list, keywords)
+  -- filter string list by regex pattern list
+  local function filter_commit_list(commit_list, patterns)
     return vim.tbl_filter(function(line)
-      for _, keyword in ipairs(keywords) do
+      -- check if the commit message matches any of the patterns
+      for _, pattern in ipairs(patterns) do
         -- normalize commit messages
         local normalized_line = string.lower(line)
-        -- check if the commit message contains any of the breaking change keywords
-        if vim.fn.stridx(normalized_line, keyword) > 0 then
+        -- match the pattern against the normalized commit message
+        if vim.fn.match(normalized_line, pattern) ~= -1 then
           return true
         end
       end
@@ -101,7 +102,7 @@ local function update()
 
   -- check for breaking changes in the current branch
   local function check_for_breaking_changes_and_continue(current_head, remote_head)
-    local breaking_change_keywords = { "breaking_change" }
+    local breaking_change_patterns = { "breaking.*change" }
     local breaking_changes = {}
 
     -- if the remote HEAD is equal to the current HEAD we are already up to date
@@ -139,15 +140,22 @@ local function update()
       end
     end
 
-    -- check if there are any breaking changes
-    breaking_changes = filter_commit_list(new_commit_list, breaking_change_keywords)
-
     -- get human redable wording
     local hr = get_human_readables(#new_commit_list)
 
-    echo { { "\nThere ", "Title" }, { hr["have"], "Title" }, { " been", "Title" },
+    -- create a summary of the new commits
+    local new_commits_summary_list = prepare_commit_table(get_commit_list_by_hash_range(current_sha, remote_sha))
+    local new_commits_summary = {
+      { "\nThere ", "Title" }, { hr["have"], "Title" }, { " been", "Title" },
       { " " .. #new_commit_list .. " " }, { "new ", "Title" }, { hr["commits"], "Title" },
-      { " since the last update.\n\n", "Title" } }
+      { " since the last update:\n", "Title" } }
+    vim.list_extend(new_commits_summary, new_commits_summary_list)
+    vim.list_extend(new_commits_summary, { { "\n", "String" } })
+
+    echo(new_commits_summary)
+
+    -- check if there are any breaking changes
+    breaking_changes = filter_commit_list(new_commit_list, breaking_change_patterns)
 
     -- if there are breaking changes, print a list of them
     if #breaking_changes > 0 then
@@ -177,7 +185,6 @@ local function update()
   end
 
   if not check_for_breaking_changes_and_continue(current_sha, remote_sha) then
-    vim.cmd "bd!"
     return
   end
 
@@ -205,7 +212,7 @@ local function update()
   utils.clear_cmdline()
   if not ans then
     restore_repo_state()
-    echo { { "\nUpdate cancelled!", "Title" } }
+    echo { { "\n\nUpdate cancelled!", "Title" } }
     return
   end
 
@@ -213,8 +220,8 @@ local function update()
   local function update_exit(_, code)
     -- close the terminal buffer only if update was success, as in case of error, we need the error message
     if code == 0 then
-      local applied_commit_list = prepare_commit_table(get_commit_list_by_hash_range(current_sha, remote_sha))
-      local summary = { { "Commits:\n", "Title" } }
+      local applied_commit_list = prepare_commit_table(get_commit_list_by_hash_range(current_sha, get_local_head()))
+      local summary = { { "Applied Commits:\n", "Title" } }
       vim.list_extend(summary, applied_commit_list)
       vim.list_extend(summary, { { "\nNvChad succesfully updated.\n", "String" } })
 

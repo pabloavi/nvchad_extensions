@@ -12,6 +12,14 @@ M.clear_cmdline = function()
    end, 0)
 end
 
+-- clear last echo using feedkeys (this is a bit hacky)
+M.clear_last_echo = function()
+    -- warp this with inputsave and inputrestore just in case
+   vim.fn.inputsave()
+   vim.api.nvim_feedkeys(':','nx', true)
+   vim.fn.inputrestore()
+end
+
 -- wrapper to use vim.api.nvim_echo
 -- table of {string, highlight}
 -- e.g echo({{"Hello", "Title"}, {"World"}})

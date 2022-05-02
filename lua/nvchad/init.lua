@@ -12,14 +12,6 @@ M.clear_cmdline = function()
    end, 0)
 end
 
--- clear last echo using feedkeys (this is a bit hacky)
-M.clear_last_echo = function()
-    -- warp this with inputsave and inputrestore just in case
-   vim.fn.inputsave()
-   vim.api.nvim_feedkeys(':','nx', true)
-   vim.fn.inputrestore()
-end
-
 -- wrapper to use vim.api.nvim_echo
 -- table of {string, highlight}
 -- e.g echo({{"Hello", "Title"}, {"World"}})
@@ -28,6 +20,29 @@ M.echo = function(opts)
       return
    end
    vim.api.nvim_echo(opts, false, {})
+end
+
+-- clear last echo using feedkeys (this is a bit hacky)
+M.clear_last_echo = function()
+   -- wrap this with inputsave and inputrestore just in case
+   vim.fn.inputsave()
+   vim.api.nvim_feedkeys(':','nx', true)
+   vim.fn.inputrestore()
+end
+
+-- a wrapper for running terminal commands that also handles errors
+-- 1st arg - the command to run
+-- 2nd arg - a boolean to indicate whether to print possible errors
+-- returns the result if successful, nil otherwise
+M.cmd = function(cmd, print_error)
+   local result = vim.fn.system(cmd)
+   if vim.api.nvim_get_vvar("shell_error") ~= 0 then
+      if print_error then
+         vim.api.nvim_err_writeln("Error running command:\n" .. cmd .. "\nError message:\n" .. result)
+      end
+      return nil
+   end
+   return result
 end
 
 -- 1st arg - r or w

@@ -16,7 +16,7 @@ local function reload_theme(theme_name)
    vim.g.nvchad_theme = theme_name
 
    -- reload the base16 theme and highlights
-   require("colors").init(theme_name)
+   require("base16").load_theme()
 
    if not reload_plugin {
       "plugins.configs.bufferline",

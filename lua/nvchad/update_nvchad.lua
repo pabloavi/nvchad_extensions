@@ -116,7 +116,7 @@ local function update()
 
   -- prepare the string representation of a commit list and return a list of lists to use with echo
   local function prepare_commit_table(commit_list)
-    local output = {}
+    local output = { { "" } }
     for _, line in ipairs(commit_list) do
       -- split line into date hash and message. Expected format: "yyyy-mm-dd: hash message"
       local commit_date, commit_hash, commit_message = line:match("(%d%d%d%d%-%d%d%-%d%d): (%w+)(.*)")
@@ -240,7 +240,6 @@ local function update()
   echo { { "\nUpdate NvChad ? [y/N]", "WarningMsg" } }
 
   local ans = string.lower(vim.fn.input "-> ") == "y"
-  utils.clear_cmdline()
   if not ans then
     restore_repo_state()
     echo { { "\n\nUpdate cancelled!", "Title" } }
@@ -251,9 +250,15 @@ local function update()
   local function update_exit(_, code)
     -- close the terminal buffer only if update was success, as in case of error, we need the error message
     if code == 0 then
-      local applied_commit_list = prepare_commit_table(get_commit_list_by_hash_range(current_sha, get_local_head()))
-      local summary = { { "Applied Commits:\n", "Title" } }
-      vim.list_extend(summary, applied_commit_list)
+      local summary = {}
+      -- check if there are new commits
+      local applied_commit_list = get_commit_list_by_hash_range(current_sha, get_local_head())
+      if applied_commit_list ~= nil and #applied_commit_list > 0 then
+        vim.list_extend(summary, { { "Applied Commits:\n", "Title" } })
+        vim.list_extend(summary, prepare_commit_table(applied_commit_list))
+      else -- no new commits
+        vim.list_extend(summary, { { "Could not create a commit summary.\n", "WarningMsg" } })
+      end
       vim.list_extend(summary, { { "\nNvChad succesfully updated.\n", "String" } })
 
       -- print the update summary
@@ -267,7 +272,7 @@ local function update()
   end
 
   -- reset in case config was modified
-  vim.fn.system("git -C " .. config_path .. " reset --hard " .. current_sha)
+  utils.cmd("git -C " .. config_path .. " reset --hard " .. current_sha, true)
   -- use --rebase, to not mess up if the local repo is outdated
   local update_script = table.concat({
     "git pull --set-upstream",

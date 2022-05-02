@@ -39,7 +39,7 @@ local function update()
 
   -- print a progress message
   local function print_progress_percentage(text, text_type, current, total, clear)
-    local percent = math.floor(current / total * 100)
+    local percent = math.floor(current / total * 100) or 0
     if clear then utils.clear_last_echo() end
     echo { { text .. " (" .. current .. "/" .. total .. ") " .. percent .. "%", text_type }}
   end
@@ -61,7 +61,7 @@ local function update()
 
   if not valid_git_dir then
     restore_repo_state()
-    echo { { "Error: " .. config_path .. " is not a git directory.\n", "ErrorMsg" } }
+    echo { { "Error: " .. config_path .. " is not a valid git directory.\n", "ErrorMsg" } }
     return
   end
 
@@ -101,10 +101,10 @@ local function update()
       -- update counter and print current progress
       counter = counter + 1
       print_progress_percentage("Analyzing commits...", "String", counter, #commit_list, true)
+      -- normalize current commit
+      local normalized_line = string.lower(line)
       -- check if the commit message matches any of the patterns
       for _, pattern in ipairs(patterns) do
-        -- normalize commit messages
-        local normalized_line = string.lower(line)
         -- match the pattern against the normalized commit message
         if vim.fn.match(normalized_line, pattern) ~= -1 then
           return true
@@ -129,8 +129,6 @@ local function update()
 
   -- check for breaking changes in the current branch
   local function check_for_breaking_changes_and_continue(current_head, remote_head)
-    local breaking_changes = {}
-
     -- if the remote HEAD is equal to the current HEAD we are already up to date
     if remote_head == current_head then
       utils.clear_last_echo()
@@ -156,7 +154,7 @@ local function update()
     local new_commit_list = get_commit_list_by_hash_range(current_head, remote_head)
 
     -- if we did not receive any new commits, we encountered an error
-    if new_commit_list == nil then
+    if new_commit_list == nil or #new_commit_list == 0 then
       utils.clear_last_echo()
       echo { { "\nSomething went wrong. No new commits were received even though the remote's HEAD differs from the " ..
         "currently checked out HEAD.", "Title" }, { "\nWould you still like to continue with the update? [y/N]",
@@ -176,7 +174,7 @@ local function update()
     local hr = get_human_readables(#new_commit_list)
 
     -- create a summary of the new commits
-    local new_commits_summary_list = prepare_commit_table(get_commit_list_by_hash_range(current_sha, remote_sha))
+    local new_commits_summary_list = prepare_commit_table(new_commit_list)
     local new_commits_summary = {
       { "\nThere ", "Title" }, { hr["have"], "Title" }, { " been", "Title" },
       { " " .. #new_commit_list .. " " }, { "new ", "Title" }, { hr["commits"], "Title" },
@@ -188,7 +186,7 @@ local function update()
     echo(new_commits_summary)
 
     -- check if there are any breaking changes
-    breaking_changes = filter_commit_list(new_commit_list, breaking_change_patterns)
+    local breaking_changes = filter_commit_list(new_commit_list, breaking_change_patterns)
 
     print_progress_percentage("Analyzing commits... Done", "String", #new_commit_list, #new_commit_list, true)
 

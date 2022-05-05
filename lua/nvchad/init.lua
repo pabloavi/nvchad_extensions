@@ -26,7 +26,7 @@ end
 M.clear_last_echo = function()
    -- wrap this with inputsave and inputrestore just in case
    vim.fn.inputsave()
-   vim.api.nvim_feedkeys(':','nx', true)
+   vim.api.nvim_feedkeys(":", "nx", true)
    vim.fn.inputrestore()
 end
 
@@ -36,7 +36,7 @@ end
 -- returns the result if successful, nil otherwise
 M.cmd = function(cmd, print_error)
    local result = vim.fn.system(cmd)
-   if vim.api.nvim_get_vvar("shell_error") ~= 0 then
+   if vim.api.nvim_get_vvar "shell_error" ~= 0 then
       if print_error then
          vim.api.nvim_err_writeln("Error running command:\n" .. cmd .. "\nError message:\n" .. result)
       end

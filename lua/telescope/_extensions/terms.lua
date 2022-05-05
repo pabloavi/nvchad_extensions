@@ -21,8 +21,8 @@ local function term_picker(opts)
 
    local bufnrs = filter(function(b)
       local _, present_type = pcall(function()
-         return vim.api.nvim_buf_call(b, function ()
-           return vim.bo.buftype == "terminal"
+         return vim.api.nvim_buf_call(b, function()
+            return vim.bo.buftype == "terminal"
          end)
       end)
 
@@ -97,16 +97,16 @@ local function term_picker(opts)
 
             local buf = entry.bufnr
             local chad_term, type = pcall(function()
-               return vim.api.nvim_buf_call(buf, function ()
-                 return vim.bo.buftype == "terminal"
+               return vim.api.nvim_buf_call(buf, function()
+                  return vim.bo.buftype == "terminal"
                end)
             end)
 
             -- TODO buffer checks/error detection (make sure we do get a buf)
 
             if chad_term then
-               local term_plugin = require('nvterm.terminal')
-               term_plugin.get_and_show('buf', buf)
+               local term_plugin = require "nvterm.terminal"
+               term_plugin.get_and_show("buf", buf)
             end
          end)
 

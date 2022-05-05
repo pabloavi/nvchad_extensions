@@ -91,7 +91,6 @@ local function theme_switcher(opts)
       -- rewrite picker.close_windows
       local close_windows = picker.close_windows
       picker.close_windows = function(status)
-         close_windows(status)
          -- now apply the theme, if success, then ask for default theme change
          local final_theme
          if change then
@@ -117,6 +116,7 @@ local function theme_switcher(opts)
          end
          -- set nvchad_theme global var
          vim.g.nvchad_theme = final_theme
+         close_windows(status)
       end
       -- launch the telescope picker
       picker:find()

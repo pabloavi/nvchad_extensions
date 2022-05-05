@@ -19,7 +19,6 @@ local function reload_theme(theme_name)
    require("base16").load_theme()
 
    if not reload_plugin {
-      "plugins.configs.bufferline",
       "plugins.configs.statusline",
    } then
       print "Error: Not able to reload all plugins."

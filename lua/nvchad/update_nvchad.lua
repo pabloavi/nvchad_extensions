@@ -1,338 +1,384 @@
 local function update()
-   -- in all the comments below, config means user config
-   local config_path = vim.fn.stdpath "config"
-   local utils = require "nvchad"
-   local echo = utils.echo
-   local current_config = require("core.utils").load_config()
-   local update_url = current_config.options.nvChad.update_url or "https://github.com/NvChad/NvChad"
-   local update_branch = current_config.options.nvChad.update_branch or "main"
-   local current_sha, backup_sha, remote_sha = "", "", ""
-   local breaking_change_patterns = { "breaking.*change" }
-   local function restore_repo_state()
-      -- on failing, restore to the last repo state, including untracked files
-      utils.cmd(
-         "git -C "
-            .. config_path
-            .. " reset --hard "
-            .. current_sha
-            .. " ; git -C "
-            .. config_path
-            .. " cherry-pick -n "
-            .. backup_sha
-            .. " ; git reset",
-         false
-      )
-   end
+  -- in all the comments below, config means user config
+  local config_path = vim.fn.stdpath "config"
+  local utils = require "nvchad"
+  local echo = utils.echo
+  local current_config = require("core.utils").load_config()
+  local update_url = current_config.options.nvChad.update_url or "https://github.com/NvChad/NvChad"
+  local update_branch = current_config.options.nvChad.update_branch or "main"
+  local current_sha, backup_sha, remote_sha = "", "", ""
+  local breaking_change_patterns = { "breaking.*change" }
+  local function restore_repo_state()
+    -- on failing, restore to the last repo state, including untracked files
+    utils.cmd(
+      "git -C "
+      .. config_path
+      .. " reset --hard "
+      .. current_sha
+      .. " ; git -C "
+      .. config_path
+      .. " cherry-pick -n "
+      .. backup_sha
+      .. " ; git reset",
+      false
+    )
+  end
 
-   -- get the current sha of the remote HEAD
-   local function get_remote_head(branch)
-      local result = utils.cmd("git -C " .. config_path .. " ls-remote --heads origin " .. branch, true)
-      if result then
-         return result:match "(%w*)"
-      end
-      return ""
-   end
+  -- get the current sha of the remote HEAD
+  local function get_remote_head(branch)
+    local result = utils.cmd("git -C " .. config_path .. " ls-remote --heads origin " .. branch, true)
+    if result then
+      return result:match "(%w*)"
+    end
+    return ""
+  end
 
-   -- get the current sha of the local HEAD
-   local function get_local_head()
-      local result = utils.cmd("git -C " .. config_path .. " rev-parse HEAD", true)
-      if result then
-         return result:match "(%w*)"
-      end
-      return ""
-   end
+  -- get the current sha of the local HEAD
+  local function get_local_head()
+    local result = utils.cmd("git -C " .. config_path .. " rev-parse HEAD", true)
+    if result then
+      return result:match "(%w*)"
+    end
+    return ""
+  end
 
-   -- print a progress message
-   local function print_progress_percentage(text, text_type, current, total, clear)
-      local percent = math.floor(current / total * 100) or 0
-      if clear then
-         utils.clear_last_echo()
-      end
-      echo { { text .. " (" .. current .. "/" .. total .. ") " .. percent .. "%", text_type } }
-   end
+  local function get_last_commit_message()
+    local result = utils.cmd("git -C " .. config_path .. " log -1 --pretty=%B", true)
+    if result then
+      return result:match "(%w*)"
+    end
+    return ""
+  end
 
-   -- save the current sha of the local HEAD
-   local valid_git_dir = true
-   current_sha = get_local_head()
-
-   -- check if the config folder is a valid git directory
-   if current_sha ~= "" then
-      utils.cmd("git -C " .. config_path .. " commit -a -m 'tmp'", false)
-      backup_sha = get_local_head()
-      if backup_sha == "" then
-         valid_git_dir = false
-      end
-   else
-      valid_git_dir = false
-   end
-
-   if not valid_git_dir then
-      restore_repo_state()
-      echo { { "Error: " .. config_path .. " is not a valid git directory.\n", "ErrorMsg" } }
-      return
-   end
-
-   echo { { "Checking for updates...", "String" } }
-
-   -- get the current sha of the remote HEAD
-   remote_sha = get_remote_head(update_branch)
-   if remote_sha == "" then
-      restore_repo_state()
-      echo { { "Error: Could not fetch remote HEAD sha.", "ErrorMsg" } }
-      return
-   end
-
-   -- create a dictionary of human readable strings
-   local function get_human_readables(count)
-      local human_readable_dict = {}
-      human_readable_dict["have"] = count > 1 and "have" or "has"
-      human_readable_dict["commits"] = count > 1 and "commits" or "commit"
-      human_readable_dict["change"] = count > 1 and "changes" or "change"
-      return human_readable_dict
-   end
-
-   -- get all commits between two points in the git history as a list of strings
-   local function get_commit_list_by_hash_range(start_hash, end_hash)
-      local commit_list_string = utils.cmd(
-         "git -C "
-            .. config_path
-            .. " log --oneline --no-merges --decorate --date=short --pretty='format:%ad: %h %s' "
-            .. start_hash
-            .. ".."
-            .. end_hash,
-         true
-      )
-      if commit_list_string == nil then
-         return nil
-      end
-      return vim.fn.split(commit_list_string, "\n")
-   end
-
-   -- filter string list by regex pattern list
-   local function filter_commit_list(commit_list, patterns)
-      local counter = 0
-      return vim.tbl_filter(function(line)
-         -- update counter and print current progress
-         counter = counter + 1
-         print_progress_percentage("Analyzing commits...", "String", counter, #commit_list, true)
-         -- normalize current commit
-         local normalized_line = string.lower(line)
-         -- check if the commit message matches any of the patterns
-         for _, pattern in ipairs(patterns) do
-            -- match the pattern against the normalized commit message
-            if vim.fn.match(normalized_line, pattern) ~= -1 then
-               return true
-            end
-         end
-         return false
-      end, commit_list) or nil
-   end
-
-   -- prepare the string representation of a commit list and return a list of lists to use with echo
-   local function prepare_commit_table(commit_list)
-      local output = { { "" } }
-      for _, line in ipairs(commit_list) do
-         -- split line into date hash and message. Expected format: "yyyy-mm-dd: hash message"
-         local commit_date, commit_hash, commit_message = line:match "(%d%d%d%d%-%d%d%-%d%d): (%w+)(.*)"
-         -- merge commit messages into one output array to minimize echo calls
-         vim.list_extend(output, {
-            { "    " },
-            { tostring(commit_date) },
-            { " " },
-            { tostring(commit_hash), "WarningMsg" },
-            { tostring(commit_message), "String" },
-            { "\n" },
-         })
-      end
-      return output
-   end
-
-   -- check for breaking changes in the current branch
-   local function check_for_breaking_changes_and_continue(current_head, remote_head)
-      -- if the remote HEAD is equal to the current HEAD we are already up to date
-      if remote_head == current_head then
-         utils.clear_last_echo()
-         echo {
-            { "You are already up to date with ", "String" },
-            { "" .. update_branch .. "" },
-            { ". There is nothing to do!", "String" },
-         }
-         return false
-      end
-
-      print_progress_percentage("Fetching new changes from remote...", "String", 1, 2, true)
-
-      -- fetch remote silently
-      local fetch_status = utils.cmd(
-         "git -C "
-            .. config_path
-            .. " fetch --quiet --prune --no-tags "
-            .. "--no-recurse-submodules origin "
-            .. update_branch,
-         true
-      )
-      if fetch_status == nil then
-         restore_repo_state()
-         echo { { "Error: Could not fetch remote changes.", "ErrorMsg" } }
-         return false
-      end
-
-      print_progress_percentage("Analyzing commits...", "String", 2, 2, true)
-
-      -- get all new commits
-      local new_commit_list = get_commit_list_by_hash_range(current_head, remote_head)
-
-      -- if we did not receive any new commits, we encountered an error
-      if new_commit_list == nil or #new_commit_list == 0 then
-         utils.clear_last_echo()
-         echo {
-            {
-               "\nSomething went wrong. No new commits were received even though the remote's HEAD differs from the "
-                  .. "currently checked out HEAD.",
-               "Title",
-            },
-            { "\nWould you still like to continue with the update? [y/N]", "WarningMsg" },
-         }
-         local continue = string.lower(vim.fn.input "-> ") == "y"
-         if continue then
-            echo { { "\n\n", "String" } }
-            return true
-         else
-            restore_repo_state()
-            echo { { "\n\nUpdate cancelled!", "Title" } }
-            return false
-         end
-      end
-
-      -- get human redable wording
-      local hr = get_human_readables(#new_commit_list)
-
-      -- create a summary of the new commits
-      local new_commits_summary_list = prepare_commit_table(new_commit_list)
-      local new_commits_summary = {
-         { "\nThere ", "Title" },
-         { hr["have"], "Title" },
-         { " been", "Title" },
-         { " " .. #new_commit_list .. " " },
-         { "new ", "Title" },
-         { hr["commits"], "Title" },
-         { " since the last update:\n", "Title" },
-      }
-      vim.list_extend(new_commits_summary, new_commits_summary_list)
-      vim.list_extend(new_commits_summary, { { "\n", "String" } })
-
+  -- print a progress message
+  local function print_progress_percentage(text, text_type, current, total, clear)
+    local percent = math.floor(current / total * 100) or 0
+    if clear then
       utils.clear_last_echo()
-      echo(new_commits_summary)
+    end
+    echo { { text .. " (" .. current .. "/" .. total .. ") " .. percent .. "%", text_type } }
+  end
 
-      -- check if there are any breaking changes
-      local breaking_changes = filter_commit_list(new_commit_list, breaking_change_patterns)
+  -- check if the last tmp commit was properly removed, if not remove it
+  local last_commit_message = get_last_commit_message()
+  if last_commit_message:match("^tmp$") then
+    utils.cmd("git -C " .. config_path .. " reset --hard HEAD~1", true)
+  end
 
-      print_progress_percentage("Analyzing commits... Done", "String", #new_commit_list, #new_commit_list, true)
+  -- save the current sha of the local HEAD
+  local valid_git_dir = true
+  current_sha = get_local_head()
 
-      -- if there are breaking changes, print a list of them
-      if #breaking_changes > 0 then
-         local breaking_changes_message = {
-            { "\nFound", "Title" },
-            { " " .. #breaking_changes .. " " },
-            { "potentially breaking ", "Title" },
-            { hr["change"], "Title" },
-            { ":\n", "Title" },
-         }
-         vim.list_extend(breaking_changes_message, prepare_commit_table(breaking_changes))
-         echo(breaking_changes_message)
+  -- check if the config folder is a valid git directory
+  if current_sha ~= "" then
+    -- create a tmp snapshot of the current repo state
+    utils.cmd("git -C " .. config_path .. " commit -a -m 'tmp'", false)
+    backup_sha = get_local_head()
+    if backup_sha == "" then
+      valid_git_dir = false
+    end
+  else
+    valid_git_dir = false
+  end
 
-         -- ask the user if they would like to continue with the update
-         echo { { "\nWould you still like to continue with the update? [y/N]", "WarningMsg" } }
-         local continue = string.lower(vim.fn.input "-> ") == "y"
-         if continue then
-            echo { { "\n\n", "String" } }
-            return true
-         else
-            restore_repo_state()
-            echo { { "\n\nUpdate cancelled!", "Title" } }
-            return false
-         end
-      else
-         -- if there are no breaking changes, just update
-         echo { { "\n", "String" } }
-         return true
+  if not valid_git_dir then
+    restore_repo_state()
+    echo { { "Error: " .. config_path .. " is not a valid git directory.\n", "ErrorMsg" } }
+    return
+  end
+
+  echo { { "Checking for updates...", "String" } }
+
+  -- get the current sha of the remote HEAD
+  remote_sha = get_remote_head(update_branch)
+  if remote_sha == "" then
+    restore_repo_state()
+    echo { { "Error: Could not fetch remote HEAD sha.", "ErrorMsg" } }
+    return
+  end
+
+  -- create a dictionary of human readable strings
+  local function get_human_readables(count)
+    local human_readable_dict = {}
+    human_readable_dict["have"] = count > 1 and "have" or "has"
+    human_readable_dict["commits"] = count > 1 and "commits" or "commit"
+    human_readable_dict["change"] = count > 1 and "changes" or "change"
+    return human_readable_dict
+  end
+
+  -- get all commits between two points in the git history as a list of strings
+  local function get_commit_list_by_hash_range(start_hash, end_hash)
+    local commit_list_string = utils.cmd(
+      "git -C "
+      .. config_path
+      .. " log --oneline --no-merges --decorate --date=short --pretty='format:%ad: %h %s' "
+      .. start_hash
+      .. ".."
+      .. end_hash,
+      true
+    )
+    if commit_list_string == nil then
+      return nil
+    end
+    return vim.fn.split(commit_list_string, "\n")
+  end
+
+  -- filter string list by regex pattern list
+  local function filter_commit_list(commit_list, patterns)
+    local counter = 0
+    return vim.tbl_filter(function(line)
+      -- update counter and print current progress
+      counter = counter + 1
+      print_progress_percentage("Analyzing commits...", "String", counter, #commit_list, true)
+      -- normalize current commit
+      local normalized_line = string.lower(line)
+      -- check if the commit message matches any of the patterns
+      for _, pattern in ipairs(patterns) do
+        -- match the pattern against the normalized commit message
+        if vim.fn.match(normalized_line, pattern) ~= -1 then
+          return true
+        end
       end
-   end
+      return false
+    end, commit_list), counter or nil, counter
+  end
 
-   if not check_for_breaking_changes_and_continue(current_sha, remote_sha) then
-      return
-   end
+  -- prepare the string representation of a commit list and return a list of lists to use with echo
+  local function prepare_commit_table(commit_list)
+    local output = { { "" } }
+    for _, line in ipairs(commit_list) do
+      -- split line into date hash and message. Expected format: "yyyy-mm-dd: hash message"
+      local commit_date, commit_hash, commit_message = line:match "(%d%d%d%d%-%d%d%-%d%d): (%w+)(.*)"
+      -- merge commit messages into one output array to minimize echo calls
+      vim.list_extend(output, {
+        { "    " },
+        { tostring(commit_date) },
+        { " " },
+        { tostring(commit_hash), "WarningMsg" },
+        { tostring(commit_message), "String" },
+        { "\n" },
+      })
+    end
+    return output
+  end
 
-   -- ask the user for confirmation to update because we are going to run git reset --hard
-   echo { { "Url: ", "Title" }, { update_url } }
-   echo { { "Branch: ", "Title" }, { update_branch } }
-   if backup_sha ~= current_sha then
+  -- check for breaking changes in the current branch
+  local function check_for_breaking_changes_and_continue(current_head, remote_head)
+    -- if the remote HEAD is equal to the current HEAD we are already up to date
+    if remote_head == current_head then
+      utils.clear_last_echo()
       echo {
-         { "\nWarning\n  Modification to repo files detected.\n\n  Updater will run", "WarningMsg" },
-         { " git reset --hard " },
-         {
-            "in config folder, so changes to existing repo files except ",
-            "WarningMsg",
-         },
-
-         { "lua/custom folder" },
-         { " will be lost!\n", "WarningMsg" },
+        { "You are already up to date with ", "String" },
+        { "" .. update_branch .. "" },
+        { ". There is nothing to do!", "String" },
       }
-   else
-      echo { { "\nNo conflicting changes found, ready to update.", "Title" } }
-   end
-   echo { { "\nUpdate NvChad ? [y/N]", "WarningMsg" } }
+      return false
+    end
 
-   local ans = string.lower(vim.fn.input "-> ") == "y"
-   if not ans then
+    utils.clear_last_echo()
+    echo { { "Url: ", "Title" }, { update_url }, { "\nBranch: ", "Title" }, { update_branch },
+      { "\n\n" } }
+
+    print_progress_percentage("Fetching new changes from remote...", "String", 1, 2, false)
+
+    -- fetch remote silently
+    local fetch_status = utils.cmd(
+      "git -C "
+      .. config_path
+      .. " fetch --quiet --prune --no-tags "
+      .. "--no-recurse-submodules origin "
+      .. update_branch,
+      true
+    )
+    if fetch_status == nil then
       restore_repo_state()
-      echo { { "\n\nUpdate cancelled!", "Title" } }
-      return
-   end
+      echo { { "Error: Could not fetch remote changes.", "ErrorMsg" } }
+      return false
+    end
 
-   -- function that will executed when git commands are done
-   local function update_exit(_, code)
-      -- close the terminal buffer only if update was success, as in case of error, we need the error message
-      if code == 0 then
-         local summary = {}
-         -- check if there are new commits
-         local applied_commit_list = get_commit_list_by_hash_range(current_sha, get_local_head())
-         if applied_commit_list ~= nil and #applied_commit_list > 0 then
-            vim.list_extend(summary, { { "Applied Commits:\n", "Title" } })
-            vim.list_extend(summary, prepare_commit_table(applied_commit_list))
-         else -- no new commits
-            vim.list_extend(summary, { { "Could not create a commit summary.\n", "WarningMsg" } })
-         end
-         vim.list_extend(summary, { { "\nNvChad succesfully updated.\n", "String" } })
+    print_progress_percentage("Analyzing commits...", "String", 2, 2, true)
 
-         -- print the update summary
-         vim.cmd "bd!"
-         echo(summary)
+    -- get all new commits
+    local new_commit_list = get_commit_list_by_hash_range(current_head, remote_head)
+
+    -- if we did not receive any new commits, we encountered an error
+    if new_commit_list == nil or #new_commit_list == 0 then
+      utils.clear_last_echo()
+      echo {
+        {
+          "\nSomething went wrong. No new commits were received even though the remote's HEAD differs from the "
+              .. "currently checked out HEAD.",
+          "Title",
+        },
+        { "\nWould you still like to continue with the update? [y/N]", "WarningMsg" },
+      }
+      local continue = string.lower(vim.fn.input "-> ") == "y"
+      if continue then
+        echo { { "\n\n", "String" } }
+        return true, true
       else
-         restore_repo_state()
-         echo { { "Error: NvChad Update failed.\n", "ErrorMsg" } }
-         echo { { "Local changes were restored." } }
+        restore_repo_state()
+        echo { { "\n\nUpdate cancelled!", "Title" } }
+        return false
       end
-   end
+    end
 
-   -- reset in case config was modified
-   utils.cmd("git -C " .. config_path .. " reset --hard " .. current_sha, true)
-   -- use --rebase, to not mess up if the local repo is outdated
-   local update_script = table.concat({
-      "git pull --set-upstream",
-      update_url,
-      update_branch,
-      "--rebase",
-   }, " ")
+    -- get human redable wording
+    local hr = get_human_readables(#new_commit_list)
 
-   -- open a new buffer
-   vim.cmd "new"
-   -- finally open the pseudo terminal buffer
-   vim.fn.termopen(update_script, {
-      -- change dir to config path so we don't need to move in script
-      cwd = config_path,
-      on_exit = update_exit,
-   })
+    -- create a summary of the new commits
+    local new_commits_summary_list = prepare_commit_table(new_commit_list)
+    local new_commits_summary = {
+      { "There ", "Title" },
+      { hr["have"], "Title" },
+      { " been", "Title" },
+      { " " .. #new_commit_list .. " " },
+      { "new ", "Title" },
+      { hr["commits"], "Title" },
+      { " since the last update:\n", "Title" },
+    }
+    vim.list_extend(new_commits_summary, new_commits_summary_list)
+    vim.list_extend(new_commits_summary, { { "\n", "String" } })
+
+    utils.clear_last_echo()
+    echo(new_commits_summary)
+
+    -- check if there are any breaking changes
+    local breaking_changes, counter = filter_commit_list(new_commit_list, breaking_change_patterns)
+
+    if #breaking_changes == 0 then
+      print_progress_percentage("No breaking changes in commit list - Analyzed", "Title",
+        counter, #new_commit_list, true)
+    else
+      print_progress_percentage("Analyzing commits... Done", "String",
+        counter, #new_commit_list, true)
+    end
+
+    -- if there are breaking changes, print a list of them
+    if #breaking_changes > 0 then
+      hr = get_human_readables(#breaking_changes)
+      local breaking_changes_message = {
+        { "\nFound", "Title" },
+        { " " .. #breaking_changes .. " " },
+        { "potentially breaking ", "Title" },
+        { hr["change"], "Title" },
+        { ":\n", "Title" },
+      }
+      vim.list_extend(breaking_changes_message, prepare_commit_table(breaking_changes))
+      echo(breaking_changes_message)
+
+      -- ask the user if they would like to continue with the update
+      echo { { "\nWould you still like to continue with the update? [y/N]", "WarningMsg" } }
+      local continue = string.lower(vim.fn.input "-> ") == "y"
+      echo { { "\n\n", "String" } }
+
+      if continue then
+        return true, true
+      else
+        restore_repo_state()
+        echo { { "Update cancelled!", "Title" } }
+        return false
+      end
+    else
+      -- if there are no breaking changes, just update
+      echo { { "\n", "String" } }
+      return true
+    end
+  end
+
+  local continue, skip_confirmation = check_for_breaking_changes_and_continue(current_sha, remote_sha)
+  if not continue then
+    return
+  end
+
+  -- ask the user for confirmation to update because we are going to run git reset --hard
+  if backup_sha ~= current_sha then
+    echo {
+      { "Warning\n  Modification to repo files detected.\n\n  Updater will run", "WarningMsg" },
+      { " git reset --hard " },
+      {
+        "in config folder, so changes to existing repo files except ",
+        "WarningMsg",
+      },
+
+      { "lua/custom folder" },
+      { " will be lost!\n", "WarningMsg" },
+    }
+    skip_confirmation = false
+  else
+    echo { { "No conflicting changes outside of the custom folder, ready to update.", "Title" } }
+  end
+
+  if not skip_confirmation then
+    echo { { "\nUpdate NvChad? [y/N]", "WarningMsg" } }
+    local ans = string.lower(vim.fn.input "-> ") == "y"
+
+    echo { { "\n", "String" } }
+    if not ans then
+      restore_repo_state()
+      echo { { "Update cancelled!", "Title" } }
+      return
+    end
+  end
+
+  local function ask_if_packer_sync()
+    -- prompt the user to execute PackerSync
+    echo { { "\nWould you like to run ", "WarningMsg" }, { "PackerSync" },
+      { " after the update has completed?\n", "WarningMsg" },
+      { "Not running ", "WarningMsg" }, { "PackerSync" }, { " may break NvChad! ", "WarningMsg" },
+      { "[y/N]", "WarningMsg" } }
+
+    local ans = string.lower(vim.fn.input "-> ") == "y"
+    return ans
+  end
+
+  local packer_sync = ask_if_packer_sync()
+
+  -- function that will executed when git commands are done
+  local function update_exit(_, code)
+    -- close the terminal buffer only if update was success, as in case of error, we need the error message
+    if code == 0 then
+      local summary = {}
+      -- check if there are new commits
+      local applied_commit_list = get_commit_list_by_hash_range(current_sha, get_local_head())
+      if applied_commit_list ~= nil and #applied_commit_list > 0 then
+        vim.list_extend(summary, { { "Applied Commits:\n", "Title" } })
+        vim.list_extend(summary, prepare_commit_table(applied_commit_list))
+      else -- no new commits
+        vim.list_extend(summary, { { "Could not create a commit summary.\n", "WarningMsg" } })
+      end
+      vim.list_extend(summary, { { "\nNvChad succesfully updated.\n", "String" } })
+      -- print the update summary
+      vim.cmd "bd!"
+      echo(summary)
+      if packer_sync then
+        vim.cmd [[PackerSync]]
+      end
+    else
+      restore_repo_state()
+      echo { { "Error: NvChad Update failed.\n\n", "ErrorMsg" },
+        { "Local changes were restored." } }
+    end
+  end
+
+  -- reset in case config was modified
+  utils.cmd("git -C " .. config_path .. " reset --hard " .. current_sha, true)
+  -- use --rebase, to not mess up if the local repo is outdated
+  local update_script = table.concat({
+    "git pull --set-upstream",
+    update_url,
+    update_branch,
+    "--rebase",
+  }, " ")
+
+  -- open a new buffer
+  vim.cmd "new"
+  -- finally open the pseudo terminal buffer
+  vim.fn.termopen(update_script, {
+    -- change dir to config path so we don't need to move in script
+    cwd = config_path,
+    on_exit = update_exit,
+  })
 end
 
 return update

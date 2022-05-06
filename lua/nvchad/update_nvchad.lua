@@ -35,7 +35,7 @@ local function update()
 
   -- get the current sha of the local HEAD
   local function get_local_head()
-    local result = utils.cmd("git -C " .. config_path .. " rev-parse HEAD", true)
+    local result = utils.cmd("git -C " .. config_path .. " rev-parse HEAD", false)
     if result then
       return result:match "(%w*)"
     end
@@ -43,7 +43,7 @@ local function update()
   end
 
   local function get_last_commit_message()
-    local result = utils.cmd("git -C " .. config_path .. " log -1 --pretty=%B", true)
+    local result = utils.cmd("git -C " .. config_path .. " log -1 --pretty=%B", false)
     if result then
       return result:match "(%w*)"
     end
@@ -62,7 +62,28 @@ local function update()
   -- check if the last tmp commit was properly removed, if not remove it
   local last_commit_message = get_last_commit_message()
   if last_commit_message:match("^tmp$") then
-    utils.cmd("git -C " .. config_path .. " reset --hard HEAD~1", true)
+    echo { { "Removing tmp commit. This has not been removed properly after the last " ..
+        "update. Cleaning up...\n\n", "WarningMsg" } }
+    -- push unstaged changes to stash if there are any
+    local result = utils.cmd("git -C " .. config_path .. " stash", true)
+    -- remove the tmp commit
+    utils.cmd("git -C " .. config_path .. " reset --hard HEAD~1", false)
+    -- if local changes were stashed, try to reapply them
+    if result then
+      echo { { "Local changes outside of the custom directory detected. They have be stashed " ..
+          "using \"git stash\"!\n\n", "WarningMsg" } }
+      -- force pop the stash
+      local stash_pop = utils.cmd("git -C " .. config_path .. " stash show -p | git -C " ..
+        config_path .. " apply && git -C " .. config_path .. " stash drop", true)
+      if stash_pop then
+        echo { { "Local changes have been restored succesfully.\n", "WarningMsg" } }
+      else
+        echo { { "\nApplying stashed changes to the NvChad directory failed, please resolve the " ..
+            "conflicts manually and use \"git stash pop\" to restore or \"git stash drop\" to " ..
+            "discard them!\n", "WarningMsg" } }
+      end
+    end
+    echo { { "\n" } }
   end
 
   -- save the current sha of the local HEAD
@@ -213,12 +234,13 @@ local function update()
         { "\nWould you still like to continue with the update? [y/N]", "WarningMsg" },
       }
       local continue = string.lower(vim.fn.input "-> ") == "y"
+      echo { { "\n\n", "String" } }
+
       if continue then
-        echo { { "\n\n", "String" } }
         return true, true
       else
         restore_repo_state()
-        echo { { "\n\nUpdate cancelled!", "Title" } }
+        echo { { "Update cancelled!", "Title" } }
         return false
       end
     end
@@ -313,7 +335,7 @@ local function update()
     echo { { "\nUpdate NvChad? [y/N]", "WarningMsg" } }
     local ans = string.lower(vim.fn.input "-> ") == "y"
 
-    echo { { "\n", "String" } }
+    echo { { "\n\n", "String" } }
     if not ans then
       restore_repo_state()
       echo { { "Update cancelled!", "Title" } }
@@ -323,7 +345,7 @@ local function update()
 
   local function ask_if_packer_sync()
     -- prompt the user to execute PackerSync
-    echo { { "\nWould you like to run ", "WarningMsg" }, { "PackerSync" },
+    echo { { "Would you like to run ", "WarningMsg" }, { "PackerSync" },
       { " after the update has completed?\n", "WarningMsg" },
       { "Not running ", "WarningMsg" }, { "PackerSync" }, { " may break NvChad! ", "WarningMsg" },
       { "[y/N]", "WarningMsg" } }

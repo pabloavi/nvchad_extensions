@@ -67,29 +67,23 @@ M.file = function(mode, filepath, content)
    return data
 end
 
--- return a table of available themes
-M.list_themes = function(return_type)
+M.list_themes = function()
    local themes = {}
-   -- folder where theme files are stored
-   local themes_folder = vim.fn.stdpath "data" .. "/site/pack/packer/opt/base46/lua/hl_themes"
-   -- list all the contents of the folder and filter out files with .lua extension, then append to themes table
-   local fd = vim.loop.fs_scandir(themes_folder)
-   if fd then
-      while true do
-         local name, typ = vim.loop.fs_scandir_next(fd)
-         if name == nil then
-            break
-         end
-         if typ ~= "directory" and string.find(name, ".lua$") then
-            -- return the table values as keys if specified
-            if return_type == "keys_as_value" then
-               themes[vim.fn.fnamemodify(name, ":r")] = true
-            else
-               table.insert(themes, vim.fn.fnamemodify(name, ":r"))
-            end
-         end
-      end
+
+   local default_themes = vim.fn.stdpath "data" .. "/site/pack/packer/opt/base46/lua/hl_themes"
+   local user_themes = vim.fn.stdpath "config" .. "/lua/custom/themes"
+
+   -- list all theme files in above dirs into a table
+   local theme_paths = require("plenary.scandir").scan_dir({ default_themes, user_themes }, {})
+
+   -- trunacate absolute theme paths to just theme names
+   for _, theme in ipairs(theme_paths) do
+      local name = vim.fn.fnamemodify(theme, ":t")
+      name = vim.fn.fnamemodify(name, ":r")
+
+      themes[#themes + 1] = name
    end
+
    return themes
 end
 

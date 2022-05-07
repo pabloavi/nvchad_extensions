@@ -8,7 +8,10 @@ local function reload_theme(theme_name)
       theme_name = vim.g.nvchad_theme
    end
 
-   if not pcall(require, "hl_themes." .. theme_name) then
+   local default_themes = pcall(require, "hl_themes." .. theme_name)
+   local user_themes = pcall(require, "custom.themes." .. theme_name)
+
+   if not default_themes and user_themes then
       print("No such theme ( " .. theme_name .. " )")
       return false
    end

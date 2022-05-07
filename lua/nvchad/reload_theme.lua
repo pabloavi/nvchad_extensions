@@ -11,7 +11,7 @@ local function reload_theme(theme_name)
    local default_themes = pcall(require, "hl_themes." .. theme_name)
    local user_themes = pcall(require, "custom.themes." .. theme_name)
 
-   if not default_themes and user_themes then
+   if not default_themes and not user_themes then
       print("No such theme ( " .. theme_name .. " )")
       return false
    end

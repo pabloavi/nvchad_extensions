@@ -231,7 +231,7 @@ local function update()
               .. "currently checked out HEAD.",
           "Title",
         },
-        { "\nWould you still like to continue with the update? [y/N]", "WarningMsg" },
+        { "\n\nWould you still like to continue with the update? [y/N]", "WarningMsg" },
       }
       local continue = string.lower(vim.fn.input "-> ") == "y"
       echo { { "\n\n", "String" } }
@@ -331,7 +331,9 @@ local function update()
     echo { { "No conflicting changes outside of the custom folder, ready to update.", "Title" } }
   end
 
-  if not skip_confirmation then
+  if skip_confirmation then
+    echo { { "\n", "String" } }
+  else
     echo { { "\nUpdate NvChad? [y/N]", "WarningMsg" } }
     local ans = string.lower(vim.fn.input "-> ") == "y"
 

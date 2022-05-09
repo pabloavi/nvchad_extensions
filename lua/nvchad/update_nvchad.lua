@@ -8,8 +8,9 @@ local function update()
   local update_branch = current_config.options.nvChad.update_branch or "main"
   local current_sha, backup_sha, remote_sha = "", "", ""
   local breaking_change_patterns = { "breaking.*change" }
+
+  -- on failing, restore to the last repo state, including untracked files
   local function restore_repo_state()
-    -- on failing, restore to the last repo state, including untracked files
     utils.cmd(
       "git -C "
       .. config_path
@@ -42,6 +43,31 @@ local function update()
     return ""
   end
 
+  -- check if the NvChad directory is a valid git repo
+  local function validate_dir()
+    local valid = true
+    -- save the current sha of the local HEAD
+    current_sha = get_local_head()
+    -- check if the config folder is a valid git directory
+    if current_sha ~= "" then
+      -- create a tmp snapshot of the current repo state
+      utils.cmd("git -C " .. config_path .. " commit -a -m 'tmp'", false)
+      backup_sha = get_local_head()
+      if backup_sha == "" then
+        valid = false
+      end
+    else
+      valid = false
+    end
+    if not valid then
+      restore_repo_state()
+      echo { { "Error: " .. config_path .. " is not a valid git directory.\n", "ErrorMsg" } }
+      return false
+    end
+    return true
+  end
+
+  -- returns the latest commit message in the git history
   local function get_last_commit_message()
     local result = utils.cmd("git -C " .. config_path .. " log -1 --pretty=%B", false)
     if result then
@@ -57,65 +83,6 @@ local function update()
       utils.clear_last_echo()
     end
     echo { { text .. " (" .. current .. "/" .. total .. ") " .. percent .. "%", text_type } }
-  end
-
-  -- check if the last tmp commit was properly removed, if not remove it
-  local last_commit_message = get_last_commit_message()
-  if last_commit_message:match("^tmp$") then
-    echo { { "Removing tmp commit. This has not been removed properly after the last " ..
-        "update. Cleaning up...\n\n", "WarningMsg" } }
-    -- push unstaged changes to stash if there are any
-    local result = utils.cmd("git -C " .. config_path .. " stash", true)
-    -- remove the tmp commit
-    utils.cmd("git -C " .. config_path .. " reset --hard HEAD~1", false)
-    -- if local changes were stashed, try to reapply them
-    if result then
-      echo { { "Local changes outside of the custom directory detected. They have be stashed " ..
-          "using \"git stash\"!\n\n", "WarningMsg" } }
-      -- force pop the stash
-      local stash_pop = utils.cmd("git -C " .. config_path .. " stash show -p | git -C " ..
-        config_path .. " apply && git -C " .. config_path .. " stash drop", true)
-      if stash_pop then
-        echo { { "Local changes have been restored succesfully.\n", "WarningMsg" } }
-      else
-        echo { { "\nApplying stashed changes to the NvChad directory failed, please resolve the " ..
-            "conflicts manually and use \"git stash pop\" to restore or \"git stash drop\" to " ..
-            "discard them!\n", "WarningMsg" } }
-      end
-    end
-    echo { { "\n" } }
-  end
-
-  -- save the current sha of the local HEAD
-  local valid_git_dir = true
-  current_sha = get_local_head()
-
-  -- check if the config folder is a valid git directory
-  if current_sha ~= "" then
-    -- create a tmp snapshot of the current repo state
-    utils.cmd("git -C " .. config_path .. " commit -a -m 'tmp'", false)
-    backup_sha = get_local_head()
-    if backup_sha == "" then
-      valid_git_dir = false
-    end
-  else
-    valid_git_dir = false
-  end
-
-  if not valid_git_dir then
-    restore_repo_state()
-    echo { { "Error: " .. config_path .. " is not a valid git directory.\n", "ErrorMsg" } }
-    return
-  end
-
-  echo { { "Checking for updates...", "String" } }
-
-  -- get the current sha of the remote HEAD
-  remote_sha = get_remote_head(update_branch)
-  if remote_sha == "" then
-    restore_repo_state()
-    echo { { "Error: Could not fetch remote HEAD sha.", "ErrorMsg" } }
-    return
   end
 
   -- create a dictionary of human readable strings
@@ -184,7 +151,7 @@ local function update()
   end
 
   -- check for breaking changes in the current branch
-  local function check_for_breaking_changes_and_continue(current_head, remote_head)
+  local function check_for_breaking_changes(current_head, remote_head)
     -- if the remote HEAD is equal to the current HEAD we are already up to date
     if remote_head == current_head then
       utils.clear_last_echo()
@@ -231,13 +198,14 @@ local function update()
               .. "currently checked out HEAD.",
           "Title",
         },
-        { "\n\nWould you still like to continue with the update? [y/N]", "WarningMsg" },
+        { "\n\nWould you like to reset NvChad to the remote's HEAD? Local changes will be lost! " ..
+            "[y/N]", "WarningMsg" },
       }
       local continue = string.lower(vim.fn.input "-> ") == "y"
       echo { { "\n\n", "String" } }
 
       if continue then
-        return true, true
+        return nil, nil
       else
         restore_repo_state()
         echo { { "Update cancelled!", "Title" } }
@@ -308,8 +276,126 @@ local function update()
     end
   end
 
-  local continue, skip_confirmation = check_for_breaking_changes_and_continue(current_sha, remote_sha)
-  if not continue then
+  -- ask the user if they want to run PackerSync
+  local function ask_if_packer_sync()
+    -- prompt the user to execute PackerSync
+    echo { { "Would you like to run ", "WarningMsg" }, { "PackerSync" },
+      { " after the update has completed?\n", "WarningMsg" },
+      { "Not running ", "WarningMsg" }, { "PackerSync" }, { " may break NvChad! ", "WarningMsg" },
+      { "[y/N]", "WarningMsg" } }
+
+    local ans = string.lower(vim.fn.input "-> ") == "y"
+    return ans
+  end
+
+  -- reset the repo to the remote's HEAD and clean up
+  local function reset_to_remote_head()
+    -- reset to remote HEAD
+    local reset_status = utils.cmd(
+      "git -C "
+      .. config_path
+      .. " reset --hard origin/" .. update_branch,
+      true
+    )
+
+    if reset_status == nil then
+      restore_repo_state()
+      utils.clear_last_echo()
+      echo { { "Error: Could not reset to remote HEAD.", "ErrorMsg" } }
+      return false
+    end
+
+    utils.clear_last_echo()
+    echo { { "Reset to remote HEAD successful!\n\n", "Title" }, { reset_status, "String" },
+      { "\n", "String" } }
+
+    -- clean up the repo
+    local clean_status = utils.cmd(
+      "git -C "
+      .. config_path
+      .. " clean -f -d",
+      true
+    )
+
+    if clean_status == nil then
+      restore_repo_state()
+      echo { { "Error: Could not clean up the repo.", "ErrorMsg" } }
+      return false
+    end
+
+    echo { { "Cleanup successful!\n\n", "Title" } }
+
+    return true
+  end
+
+  -- if the updater failed to remove the last tmp commit remove it
+  local function check_for_leftover_tmp_commit()
+    local last_commit_message = get_last_commit_message()
+    if last_commit_message:match("^tmp$") then
+      echo { { "Removing tmp commit. This has not been removed properly after the last " ..
+          "update. Cleaning up...\n\n", "WarningMsg" } }
+      -- push unstaged changes to stash if there are any
+      local result = utils.cmd("git -C " .. config_path .. " stash", true)
+      -- remove the tmp commit
+      utils.cmd("git -C " .. config_path .. " reset --hard HEAD~1", false)
+      -- if local changes were stashed, try to reapply them
+      if not result:match("No local changes to save") then
+        echo { { "Local changes outside of the custom directory detected. They have be stashed " ..
+            "using \"git stash\"!\n\n", "WarningMsg" } }
+        -- force pop the stash
+        local stash_pop = utils.cmd("git -C " .. config_path .. " stash show -p | git -C " ..
+          config_path .. " apply && git -C " .. config_path .. " stash drop", true)
+        if stash_pop then
+          echo { { "Local changes have been restored succesfully.\n", "WarningMsg" } }
+        else
+          echo { { "\nApplying stashed changes to the NvChad directory failed, please resolve the " ..
+              "conflicts manually and use \"git stash pop\" to restore or \"git stash drop\" to " ..
+              "discard them!\n", "WarningMsg" } }
+        end
+      end
+      echo { { "\n" } }
+    end
+  end
+
+  -- THE UPDATE PROCEDURE BEGINS HERE
+
+  -- check if the last tmp commit was properly removed, if not remove it
+  check_for_leftover_tmp_commit()
+
+  local valid_git_dir = validate_dir()
+  local continue, skip_confirmation = false, false
+
+  -- return if the directory is not a valid git directory
+  if not valid_git_dir then return end
+
+  echo { { "Checking for updates...", "String" } }
+
+  -- get the current sha of the remote HEAD
+  remote_sha = get_remote_head(update_branch)
+  if remote_sha == "" then
+    restore_repo_state()
+    echo { { "Error: Could not fetch remote HEAD sha.", "ErrorMsg" } }
+    return
+  end
+
+  continue, skip_confirmation = check_for_breaking_changes(current_sha, remote_sha)
+
+  if continue == nil and skip_confirmation == nil then
+    echo { { "Resetting to remote HEAD...", "Title" } }
+
+    if not reset_to_remote_head() then
+      restore_repo_state()
+      echo { { "\nError: NvChad Update failed.", "ErrorMsg" } }
+      return false
+    end
+
+    utils.clear_last_echo()
+    echo { { "NvChad's HEAD has successfully been reset to ", "Title" },
+      { update_branch }, { ".\n\n", "Title" } }
+
+    valid_git_dir = validate_dir()
+    if not valid_git_dir then return end
+  elseif not continue then
     return
   end
 
@@ -343,17 +429,6 @@ local function update()
       echo { { "Update cancelled!", "Title" } }
       return
     end
-  end
-
-  local function ask_if_packer_sync()
-    -- prompt the user to execute PackerSync
-    echo { { "Would you like to run ", "WarningMsg" }, { "PackerSync" },
-      { " after the update has completed?\n", "WarningMsg" },
-      { "Not running ", "WarningMsg" }, { "PackerSync" }, { " may break NvChad! ", "WarningMsg" },
-      { "[y/N]", "WarningMsg" } }
-
-    local ans = string.lower(vim.fn.input "-> ") == "y"
-    return ans
   end
 
   local packer_sync = ask_if_packer_sync()

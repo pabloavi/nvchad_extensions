@@ -141,7 +141,7 @@ local config_handler = function(config)
 end
 
 M.init = function()
-   local config = require("core.utils").load_config().options.terminal
+   local config = nvchad.load_config().options.terminal
    config_handler(config)
 end
 

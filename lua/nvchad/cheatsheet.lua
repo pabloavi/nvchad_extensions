@@ -201,7 +201,7 @@ local cheatsheet = {}
 
 cheatsheet.show = function()
    -- Lua is copy by reference so make a deep copy of the table
-   local mappings = vim.deepcopy(require("core.utils").load_config().mappings)
+   local mappings = vim.deepcopy(nvchad.load_config().mappings)
    local pluginMappings = mappings.plugins
    mappings.plugins = nil
 

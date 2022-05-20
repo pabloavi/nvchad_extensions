@@ -12,7 +12,20 @@ local function change_theme(current_theme, new_theme)
    local file = vim.fn.stdpath "config" .. "/lua/custom/" .. "chadrc.lua"
 
    -- store in data variable
-   local data = assert(file_fn("r", file))
+   local data = file_fn("r", file)
+
+   -- check if data is false or nil and create a default file if it is
+   if not data then
+      file_fn("w", file, 'local M = {}\n\nM.ui = {\n   theme = "' .. new_theme .. '",\n}\n\nreturn M')
+      data = file_fn("r", file)
+   end
+
+   -- if the file was still not created, then something went wrong
+   if not data then
+      print("Error: Could not create: " .. file .. ". Please create it manually to set a default "
+         .. "theme. Look at the documentation for more info.")
+      return false
+   end
 
    -- escape characters which can be parsed as magic chars
    current_theme = current_theme:gsub("%p", "%%%0")

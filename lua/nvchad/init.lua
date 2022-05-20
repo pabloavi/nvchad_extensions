@@ -51,6 +51,11 @@ end
 -- return file data on read, nothing on write
 M.file = function(mode, filepath, content)
    local data
+   local base_dir = vim.fn.fnamemodify(filepath, ":h")
+   -- check if file exists in filepath, return false if not
+   if mode == "r" and vim.fn.filereadable(filepath) == 0 then return false end
+   -- check if directory exists, create it and all parents if not
+   if mode == "w" and vim.fn.isdirectory(base_dir) == 0 then vim.fn.mkdir(base_dir, "p") end
    local fd = assert(vim.loop.fs_open(filepath, mode, 438))
    local stat = assert(vim.loop.fs_fstat(fd))
    if stat.type ~= "file" then

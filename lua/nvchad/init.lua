@@ -98,6 +98,6 @@ end
 M.reload_theme = require "nvchad.reload_theme"
 
 -- update nvchad
-M.update_nvchad = require "nvchad.update_nvchad"
+M.update_nvchad = require "nvchad.updater.update"
 
 return M

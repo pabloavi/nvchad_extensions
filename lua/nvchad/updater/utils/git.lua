@@ -81,6 +81,30 @@ M.validate_dir = function()
    return true
 end
 
+-- checkout a given branch
+M.checkout_branch = function(branch)
+   local result = utils.cmd("git -C " .. M.config_path .. " checkout " .. branch, true)
+   local current_branch_name = M.get_current_branch_name()
+
+   if result and current_branch_name == branch then
+      return true
+   end
+
+   echo(misc.list_text_replace(prompts.checkout_failed, "<BRANCH_NAME>", branch))
+   return false
+end
+
+-- returns the currently checked out branch name
+M.get_current_branch_name = function()
+   local result = utils.cmd("git -C " .. M.config_path .. " rev-parse --abbrev-ref HEAD", false)
+
+   if result then
+      return result:match "(%w*)"
+   end
+
+   return ""
+end
+
 -- returns the latest commit message in the git history
 M.get_last_commit_message = function()
    local result = utils.cmd("git -C " .. M.config_path .. " log -1 --pretty=%B", false)
@@ -382,6 +406,7 @@ M.check_for_breaking_changes = function(current_head, remote_head)
          return false
       end
    else
+
       -- if there are no breaking changes, just update
       misc.print_padding("\n", 1)
       return true

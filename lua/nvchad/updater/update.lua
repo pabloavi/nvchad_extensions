@@ -7,6 +7,11 @@ local function update()
    local echo = utils.echo
    local continue, skip_confirmation = false, false
 
+   -- check if we are on the correct update branch, if not, switch to it
+   if not git.checkout_branch(git.update_branch) then
+      return
+   end
+
    -- check if the last tmp commit was properly removed, if not remove it
    git.check_for_leftover_tmp_commit()
 

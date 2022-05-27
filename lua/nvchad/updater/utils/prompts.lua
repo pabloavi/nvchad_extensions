@@ -12,6 +12,8 @@ M.breaking_changes_found = { { "\nFound", "Title" }, { " <BREAKING_CHANGES_COUNT
 
 M.checking_for_updates = { { "Checking for updates...", "String" } }
 
+M.checkout_failed = { { "\nChecking out the currently set update branch ", "WarningMsg" }, { "<BRANCH_NAME>" }, { " failed. Please make sure that it exists before trying to update!", "WarningMsg" } }
+
 M.clean_repo_dir_failed = { { "Error: Could not clean up the repo.", "ErrorMsg" } }
 
 M.clean_repo_dir_success = { { "Cleanup successful!\n\n", "Title" } }

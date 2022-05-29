@@ -6,7 +6,7 @@ local echo = utils.echo
 local M = {}
 
 M.config_path = vim.fn.stdpath "config"
-M.current_config = nvchad.load_config()
+M.current_config = require("core.utils").load_config()
 M.update_url = M.current_config.options.nvChad.update_url or "https://github.com/NvChad/NvChad"
 M.update_branch = M.current_config.options.nvChad.update_branch or "main"
 M.current_sha, M.backup_sha, M.remote_sha = "", "", ""

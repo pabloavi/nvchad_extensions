@@ -53,9 +53,13 @@ M.file = function(mode, filepath, content)
    local data
    local base_dir = vim.fn.fnamemodify(filepath, ":h")
    -- check if file exists in filepath, return false if not
-   if mode == "r" and vim.fn.filereadable(filepath) == 0 then return false end
+   if mode == "r" and vim.fn.filereadable(filepath) == 0 then
+      return false
+   end
    -- check if directory exists, create it and all parents if not
-   if mode == "w" and vim.fn.isdirectory(base_dir) == 0 then vim.fn.mkdir(base_dir, "p") end
+   if mode == "w" and vim.fn.isdirectory(base_dir) == 0 then
+      vim.fn.mkdir(base_dir, "p")
+   end
    local fd = assert(vim.loop.fs_open(filepath, mode, 438))
    local stat = assert(vim.loop.fs_fstat(fd))
    if stat.type ~= "file" then
@@ -99,5 +103,16 @@ M.reload_theme = require "nvchad.reload_theme"
 
 -- update nvchad
 M.update_nvchad = require "nvchad.updater.update"
+
+M.write_data = function(old_data, new_data)
+   local file_fn = require("nvchad").file
+   local file = vim.fn.stdpath "config" .. "/lua/custom/" .. "chadrc.lua"
+   local data = file_fn("r", file)
+
+   local content = string.gsub(data, old_data, new_data)
+
+   -- see if the find string exists in file
+   assert(file_fn("w", file, content))
+end
 
 return M

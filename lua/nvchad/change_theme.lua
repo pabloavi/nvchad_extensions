@@ -22,8 +22,12 @@ local function change_theme(current_theme, new_theme)
 
    -- if the file was still not created, then something went wrong
    if not data then
-      print("Error: Could not create: " .. file .. ". Please create it manually to set a default "
-         .. "theme. Look at the documentation for more info.")
+      print(
+         "Error: Could not create: "
+            .. file
+            .. ". Please create it manually to set a default "
+            .. "theme. Look at the documentation for more info."
+      )
       return false
    end
 
@@ -31,17 +35,10 @@ local function change_theme(current_theme, new_theme)
    current_theme = current_theme:gsub("%p", "%%%0")
    new_theme = new_theme:gsub("%p", "%%%0")
 
-   local find = "theme = .?" .. current_theme .. ".?"
-   local replace = 'theme = "' .. new_theme .. '"'
-   local content = string.gsub(data, find, replace)
+   local old_theme_txt = "theme = .?" .. current_theme .. ".?"
+   local new_theme_txt = 'theme = "' .. new_theme .. '"'
 
-   -- see if the find string exists in file
-   if content == data then
-      print("Error: Cannot change default theme with " .. new_theme .. ", edit " .. file .. " manually")
-      return false
-   else
-      assert(file_fn("w", file, content))
-   end
+   require("nvchad").write_data(old_theme_txt, new_theme_txt)
 end
 
 return change_theme

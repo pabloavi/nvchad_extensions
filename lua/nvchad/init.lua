@@ -104,6 +104,12 @@ M.reload_theme = require "nvchad.reload_theme"
 -- update nvchad
 M.update_nvchad = require "nvchad.updater.update"
 
+-- create snapshot
+M.snap = require "nvchad.updater.snap"
+
+-- rollback nvchad
+M.rollback = require "nvchad.updater.rollback"
+
 M.write_data = function(old_data, new_data)
    local file_fn = require("nvchad").file
    local file = vim.fn.stdpath "config" .. "/lua/custom/" .. "chadrc.lua"

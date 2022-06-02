@@ -12,7 +12,7 @@ M.breaking_changes_found = { { "\nFound", "Title" }, { " <BREAKING_CHANGES_COUNT
 
 M.checking_for_updates = { { "Checking for updates...", "String" } }
 
-M.checkout_failed = { { "\nChecking out the currently set update branch ", "WarningMsg" }, { "<BRANCH_NAME>" }, { " failed. Please make sure that it exists before trying to update!", "WarningMsg" } }
+M.checkout_failed = { { "\nChecking out the currently set update branch ", "WarningMsg" }, { "<BRANCH_NAME>" } }
 
 M.clean_repo_dir_failed = { { "Error: Could not clean up the repo.", "ErrorMsg" } }
 
@@ -20,7 +20,15 @@ M.clean_repo_dir_success = { { "Cleanup successful!\n\n", "Title" } }
 
 M.commit_summary_failed = { { "Could not create a commit summary.\n", "WarningMsg" } }
 
+M.create_branch_failed = { { "Error: Could not create branch ", "WarningMsg" }, { "<BRANCH_NAME>" }, { "!", "WarningMsg" } }
+
+M.create_commit_failed = { { "Error: Could not create commit.", "ErrorMsg" } }
+
 M.diverged_branches = { { "\nSomething went wrong. No new commits were received even though the remote's HEAD " .. "differs from the currently checked out HEAD.", "Title", }, { "\n\nWould you like to reset NvChad to the remote's HEAD? Local changes will be lost! " .. "[y/N]", "WarningMsg", } }
+
+M.get_author_identity_failed = { { "Error: Could not get author identity.", "ErrorMsg" } }
+
+M.get_initial_commit_hash_failed = { { "Error: Could not get initial commit hash.", "ErrorMsg" } }
 
 M.modifications_detected = { { "Warning\n  Modification to repo files detected.\n\n  Updater will run", "WarningMsg" }, { " git reset --hard " }, { "in config folder, so changes to existing repo files except ", "WarningMsg" }, { "lua/custom folder" }, { " will be lost!\n", "WarningMsg" } }
 
@@ -56,6 +64,8 @@ M.reset_remote_head_success = { { "NvChad's HEAD has successfully been reset to 
 
 M.reset_remote_head_success_status = { { "Reset to remote HEAD successful!\n\n", "Title" }, { "<RESET_STATUS>", "String" }, { "\n", "String" } }
 
+M.squash_failed = { { "Error: Could not squash commits.", "ErrorMsg" } }
+
 M.update_cancelled = { { "Update cancelled!", "Title" } }
 
 M.update_cancelled_up_to_date = { { "You are already up to date with ", "String" }, { "<UPDATE_BRANCH>" }, { ". There is nothing to do!", "String" } }
@@ -69,5 +79,15 @@ M.update_failed = { { "\nError: NvChad Update failed.", "ErrorMsg" } }
 M.update_failed_changes_restored = { { "Error: NvChad Update failed.\n\n", "ErrorMsg" }, { "Local changes were restored." } }
 
 M.update_success = { { "\nNvChad succesfully updated.\n", "String" } }
+
+M.snapshot_successfully_created = { { "Snapshot ", "Title" }, { "<SNAP_NAME>" }, { " has been created successfully!", "Title" } }
+
+M.snapshot_compressing_branch = { { "Compressing snapshot...", "WarningMsg" } }
+
+M.snapshot_creating_branch = { { "Creating snapshot branch -> ", "WarningMsg" }, { "<BRANCH_NAME>" }, { "...", "WarningMsg" } }
+
+M.snapshot_enter_name = { { "Enter the name of the snapshot you want to create or abort [<name>/A]:", "WarningMsg" } }
+
+M.snapshot_stay_or_return = { { "Would you like to use the snapshot branch (", "WarningMsg" }, { "<BRANCH_NAME>" }, { ") or return to the update branch (", "WarningMsg" }, { "<UPDATE_BRANCH>" }, { ")? [s/R]", "WarningMsg" } }
 
 return M

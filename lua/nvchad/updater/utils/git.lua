@@ -135,6 +135,17 @@ M.get_commit_list_by_hash_range = function(start_hash, end_hash)
    return vim.fn.split(commit_list_string, "\n")
 end
 
+M.create_branch = function(branch_name)
+   local result = utils.cmd("git -C " .. M.config_path .. " checkout -b " .. branch_name, true)
+
+   if result then
+      return true
+   end
+
+   echo(misc.list_text_replace(prompts.create_branch_failed, "<BRANCH_NAME>", branch_name))
+   return false
+end
+
 M.is_shallow = function()
    local result = utils.cmd("git -C " .. M.config_path .. " rev-parse --is-shallow-repository",
       false)
@@ -144,6 +155,94 @@ M.is_shallow = function()
    end
 
    return false
+end
+
+M.get_initial_commit_hash = function()
+   local result = utils.cmd("git -C " .. M.config_path .. " rev-list --max-parents=0 HEAD", false)
+
+   if result then
+      return result:match "(%w*)"
+   end
+
+   echo(prompts.get_initial_commit_hash_failed)
+   return false
+end
+
+-- squash all commits in history after the start commit
+M.squash_commits_from_hash = function(start_hash)
+   local result = utils.cmd(
+      "git -C "
+      .. M.config_path
+      .. " reset --soft "
+      .. start_hash,
+      true
+   )
+
+   if result then
+      return true
+   end
+
+   echo(prompts.squash_failed)
+   return false
+end
+
+M.create_commit = function(commit_message, amend, author_name, author_email, author_time_zone)
+   local result = utils.cmd(
+      "git -C "
+      .. M.config_path
+      .. " commit -m '" .. commit_message .. "'"
+      .. (author_name and " --author='" .. author_name or "")
+      .. (author_name and author_email and " <" .. author_email .. ">'" or "'")
+      .. (author_time_zone and " --date='" .. author_time_zone .. "'" or "")
+      .. (amend and " --amend" or ""),
+      true
+   )
+
+   if result then
+      return true
+   end
+
+   echo(prompts.create_commit_failed)
+   return false
+end
+
+M.get_author_identity = function()
+   local author_name = utils.cmd("git -C " .. M.config_path .. " config --get user.name", false)
+   local author_email = utils.cmd("git -C " .. M.config_path .. " config --get user.email", false)
+   local author_time_zone = os.date("%Y-%m-%d %H:%M:%S %z")
+
+   if author_name or author_email or author_time_zone then
+      return true, author_name, author_email, author_time_zone
+   end
+
+   echo(prompts.get_author_identity_failed)
+   return false, nil, nil, nil
+end
+
+M.squash_commit_history = function(commit_message, author_name, author_email, author_time_zone)
+   -- get hash of first commit in history
+   local first_commit_hash = M.get_initial_commit_hash()
+
+   if not first_commit_hash then
+      return false
+   end
+
+   -- squash all commits in history after the first commit
+   local reset_state = M.squash_commits_from_hash(first_commit_hash)
+
+   if not reset_state then
+      return false
+   end
+
+   -- commit the squashed history
+   local commit_state = M.create_commit(commit_message, true, author_name, author_email,
+      author_time_zone)
+
+   if not commit_state then
+      return false
+   end
+
+   return true
 end
 
 M.fetch_head = function()

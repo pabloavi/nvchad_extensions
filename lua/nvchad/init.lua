@@ -105,7 +105,10 @@ M.reload_theme = require "nvchad.reload_theme"
 M.update_nvchad = require "nvchad.updater.update"
 
 -- create snapshot
-M.snap = require "nvchad.updater.snap"
+M.snap_create = require "nvchad.updater.snap_create"
+
+-- delete snapshot
+M.snap_delete = require "nvchad.updater.snap_delete"
 
 -- rollback nvchad
 M.rollback = require "nvchad.updater.rollback"

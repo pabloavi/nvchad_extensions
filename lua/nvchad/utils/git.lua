@@ -105,6 +105,41 @@ M.get_current_branch_name = function()
    return ""
 end
 
+-- returns the currently checked out branch name
+M.reset = function(number_of_commits, args)
+   local result = utils.cmd(
+      "git -C "
+      .. M.config_path
+      .. " reset"
+      .. (number_of_commits and " HEAD~" .. number_of_commits or "")
+      .. (args and " " .. args or "")
+      , false)
+
+   if not result then
+      echo(prompts.reset_failed)
+      return false
+   end
+
+   return true
+end
+
+-- returns the currently checked out branch name
+M.restore = function(args)
+   local result = utils.cmd(
+      "git -C "
+      .. M.config_path
+      .. " restore"
+      .. (args and " " .. args or "")
+      , false)
+
+   if not result then
+      echo(prompts.restore_failed)
+      return false
+   end
+
+   return true
+end
+
 -- returns the latest commit message in the git history
 M.get_last_commit_message = function()
    local result = utils.cmd("git -C " .. M.config_path .. " log -1 --pretty=%B", false)

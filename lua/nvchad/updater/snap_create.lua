@@ -41,7 +41,7 @@ local function snap_create()
    echo(misc.list_text_replace(prompts.snapshot_creating_branch, "<BRANCH_NAME>", branch_name))
 
    -- create a packer snapshot using the vim command "PackerSnapshot"
-   -- vim.cmd("PackerSnapshot " .. branch_name)
+   vim.cmd("PackerSnapshot " .. branch_name)
 
    -- create and checkout snap branch
    if not git.create_branch(branch_name) then
@@ -49,14 +49,14 @@ local function snap_create()
    end
 
    -- set the packer snapshot for this nvchad snap
-   utils.write_data("return M", 'M.plugins.override["wbthomason/packer.nvim"].snapshot = "'
-      .. branch_name .. '"\n\nreturn M')
+   utils.write_data("return M", 'M.plugins.override["wbthomason/packer.nvim"] = { snapshot = "'
+      .. branch_name .. '" }\n\nreturn M')
 
    if not git.add('lua/custom', true) then
       return
    end
 
-   local valid_git_dir = git.validate_dir()
+   valid_git_dir = git.validate_dir()
 
    -- return if the directory is not a valid git directory
    if not valid_git_dir then
@@ -86,7 +86,13 @@ local function snap_create()
       return
    end
 
-   git.restore_repo_state()
+   if not git.reset(1, "--soft") then
+      return
+   end
+
+   if not git.restore("--staged .") then
+      return
+   end
 
    misc.print_padding("\n", 1)
    echo(misc.list_text_replace(prompts.snapshot_stay_or_return,
@@ -94,7 +100,7 @@ local function snap_create()
 
    local stay_on_snap = string.lower(vim.fn.input("-> "));
 
-   if not stay_on_snap == "s" then
+   if stay_on_snap == "r" then
       return
    end
 

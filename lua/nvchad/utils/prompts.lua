@@ -68,6 +68,10 @@ M.reset_remote_head_success = { { "NvChad's HEAD has successfully been reset to 
 
 M.reset_remote_head_success_status = { { "Reset to remote HEAD successful!\n\n", "Title" }, { "<RESET_STATUS>", "String" }, { "\n", "String" } }
 
+M.reset_failed = { { "Reset failed!", "WarningMsg" } }
+
+M.restore_failed = { { "Restore failed!", "WarningMsg" } }
+
 M.squash_failed = { { "Error: Could not squash commits.", "ErrorMsg" } }
 
 M.update_cancelled = { { "Update cancelled!", "Title" } }

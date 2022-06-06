@@ -106,13 +106,11 @@ M.get_current_branch_name = function()
 end
 
 -- returns the currently checked out branch name
-M.reset = function(number_of_commits, args)
+M.reset = function(...)
    local result = utils.cmd(
       "git -C "
       .. M.config_path
-      .. " reset"
-      .. (number_of_commits and " HEAD~" .. number_of_commits or "")
-      .. (args and " " .. args or "")
+      .. " reset" .. ... and table.concat(..., " ") or ""
       , false)
 
    if not result then
@@ -124,16 +122,31 @@ M.reset = function(number_of_commits, args)
 end
 
 -- returns the currently checked out branch name
-M.restore = function(args)
+M.restore = function(...)
    local result = utils.cmd(
       "git -C "
       .. M.config_path
-      .. " restore"
-      .. (args and " " .. args or "")
+      .. " restore" .. ... and table.concat(..., " ") or ""
       , false)
 
    if not result then
       echo(prompts.restore_failed)
+      return false
+   end
+
+   return true
+end
+
+M.delete_file = function(file_path, cached)
+   local result = utils.cmd(
+      "git -C "
+      .. M.config_path
+      .. " rm "
+      .. (cached and "--cached " or "")
+      .. file_path)
+
+   if not result then
+      echo(misc.list_text_replace(prompts.delete_file_failed, "<FILE_NAME>", file_path))
       return false
    end
 
@@ -181,6 +194,17 @@ M.create_branch = function(branch_name)
    return false
 end
 
+M.delete_branch = function(branch_name)
+   local result = utils.cmd("git -C " .. M.config_path .. " branch -D " .. branch_name, true)
+
+   if result then
+      return true
+   end
+
+   echo(misc.list_text_replace(prompts.branch_delete_failed, "<BRANCH_NAME>", branch_name))
+   return false
+end
+
 M.is_shallow = function()
    local result = utils.cmd("git -C " .. M.config_path .. " rev-parse --is-shallow-repository",
       false)
@@ -192,15 +216,12 @@ M.is_shallow = function()
    return false
 end
 
-M.add = function(file_path, force)
+M.add = function(...)
    local result = utils.cmd(
       "git -C "
       .. M.config_path
-      .. " add "
-      .. file_path
-      .. (force and " -f" or ""),
-      true
-   )
+      .. " add " .. ... and table.concat(..., " ") or ""
+      , true)
 
    if result then
       return true
@@ -238,16 +259,12 @@ M.squash_commits_from_hash = function(start_hash)
    return false
 end
 
-M.create_commit = function(commit_message, amend, author_name, author_email, author_time_zone)
+M.create_commit = function(...)
    local result = utils.cmd(
       "git -C "
       .. M.config_path
-      .. " commit -m '" .. commit_message .. "'"
-      .. (author_name and " --author='" .. author_name or "")
-      .. (author_name and author_email and " <" .. author_email .. ">'" or "'")
-      .. (author_time_zone and " --date='" .. author_time_zone .. "'" or "")
-      .. (amend and " --amend" or ""),
-      true
+      .. " commit " .. ... and table.concat(..., " ") or "",
+      false
    )
 
    if result then
@@ -287,8 +304,9 @@ M.squash_commit_history = function(commit_message, author_name, author_email, au
    end
 
    -- commit the squashed history
-   local commit_state = M.create_commit(commit_message, true, author_name, author_email,
-      author_time_zone)
+   local commit_state = M.create_commit("-m " .. commit_message, (author_name and " --author='"
+       .. author_name or "") .. (author_name and author_email and " <" .. author_email .. ">'"
+       or ""), (author_time_zone and " --date='" .. author_time_zone .. "'" or ""), "--amend")
 
    if not commit_state then
       return false
@@ -325,7 +343,7 @@ M.get_stash_list = function()
    local stash_list_string = utils.cmd(
       "git -C "
       .. M.config_path
-      .. " stash list --pretty=format:%gd",
+      .. " stash list",
       true
    )
 
@@ -334,6 +352,38 @@ M.get_stash_list = function()
    end
 
    return vim.fn.split(stash_list_string, "\n")
+end
+
+M.get_stash_index = function(stash_name)
+   local stash_list = M.get_stash_list()
+
+   if stash_list == nil then
+      return -1
+   end
+
+   for i, stash in ipairs(stash_list) do
+      if stash:match(stash_name) then
+         return i
+      end
+   end
+
+   return -1
+end
+
+M.stash = function(...)
+   local result = utils.cmd(
+      "git -C "
+      .. M.config_path
+      .. " stash " .. ... and table.concat(..., " ") or "",
+      true
+   )
+
+   if result then
+      return true
+   end
+
+   echo(prompts.stash_failed)
+   return false
 end
 
 -- if the updater failed to remove the last tmp commit remove it
@@ -345,10 +395,10 @@ M.check_for_leftover_tmp_commit = function()
       local pre_stash_count = #M.get_stash_list()
 
       -- push unstaged changes to stash if there are any
-      utils.cmd("git -C " .. M.config_path .. " stash", true)
+      M.stash()
 
       -- remove the tmp commit
-      utils.cmd("git -C " .. M.config_path .. " reset --hard HEAD~1", false)
+      M.reset("HEAD~1", "--hard")
 
       -- if local changes were stashed, try to reapply them
       if #M.get_stash_list() > pre_stash_count then
@@ -562,22 +612,6 @@ M.check_for_breaking_changes = function(current_head, remote_head)
       misc.print_padding("\n", 1)
       return true
    end
-end
-
-M.delete_file = function(file_path, cached)
-   local result = utils.cmd(
-      "git -C "
-      .. M.config_path
-      .. " rm "
-      .. (cached and "--cached " or "")
-      .. file_path)
-
-   if not result then
-      echo(misc.list_text_replace(prompts.delete_file_failed, "<FILE_NAME>", file_path))
-      return false
-   end
-
-   return true
 end
 
 return M

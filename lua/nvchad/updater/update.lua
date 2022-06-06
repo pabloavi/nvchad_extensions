@@ -8,7 +8,10 @@ local function update()
    local continue, skip_confirmation = false, false
 
    -- check if we are on the correct update branch, if not, switch to it
-   if not git.checkout_branch(git.update_branch) then
+   if git.checkout_branch(git.update_branch) then
+      echo(misc.list_text_replace(prompts.switched_to_update_branch, "<UPDATE_BRANCH>",
+         git.update_branch))
+   else
       return
    end
 

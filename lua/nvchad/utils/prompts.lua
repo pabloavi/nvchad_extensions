@@ -10,11 +10,19 @@ M.analyzing_commits_done_no_breaking_changes = { { "No breaking changes in commi
 
 M.applied_commits = { { "Applied Commits:\n", "Title" } }
 
+M.branch_already_exists = { { "A Snapshot with the name ", "WarningMsg" }, { "<BRANCH_NAME>" }, { " already exists! Would you like to [o]verwirte this snapshot, use another [<name>] or [a]bort? [<name>/o/A]", "WarningMsg" } }
+
+M.branch_delete_failed = { { "Deleting branch ", "WarningMsg" }, { "<BRANCH_NAME>" }, { " failed!", "WarningMsg" } }
+
+M.branch_deleted = { { "Branch ", "WarningMsg" }, { "<BRANCH_NAME>" }, { " deleted succesfully!\n", "WarningMsg" } }
+
 M.breaking_changes_found = { { "\nFound", "Title" }, { " <BREAKING_CHANGES_COUNT> " }, { "potentially breaking ", "Title" }, { "<HR_CHANGE>", "Title" }, { ":\n", "Title" } }
 
 M.checking_for_updates = { { "Checking for updates...", "String" } }
 
-M.checkout_failed = { { "\nChecking out the currently set update branch ", "WarningMsg" }, { "<BRANCH_NAME>" } }
+M.checkout = { { "\nChecking out the currently set update branch ", "WarningMsg" }, { "<BRANCH_NAME>" } }
+
+M.checkout_failed = { { "\nChecking out the currently set update branch ", "WarningMsg" }, { "<BRANCH_NAME>" }, { " failed!", "WarningMsg" } }
 
 M.clean_repo_dir_failed = { { "Error: Could not clean up the repo.", "ErrorMsg" } }
 
@@ -25,6 +33,8 @@ M.commit_summary_failed = { { "Could not create a commit summary.\n", "WarningMs
 M.create_branch_failed = { { "Error: Could not create branch ", "WarningMsg" }, { "<BRANCH_NAME>" }, { "!", "WarningMsg" } }
 
 M.create_commit_failed = { { "Error: Could not create commit.", "ErrorMsg" } }
+
+M.stashing_custom_dir = { { "Stashing custom directory under: ", "WarningMsg" }, { "<STASH_NAME>" }, { "...\n", "WarningMsg" } }
 
 M.delete_file_failed = { { "Error: Could not delete file ", "WarningMsg" }, { "<FILE_NAME>" }, { "!", "WarningMsg" } }
 
@@ -98,4 +108,7 @@ M.snapshot_enter_name = { { "Enter the name of the snapshot you want to create o
 
 M.snapshot_stay_or_return = { { "Would you like to use the snapshot branch (", "WarningMsg" }, { "<BRANCH_NAME>" }, { ") or return to the update branch (", "WarningMsg" }, { "<UPDATE_BRANCH>" }, { ")? [s/R]", "WarningMsg" } }
 
+M.stash_failed = { { "Error: Could not complete stash operation.", "ErrorMsg" } }
+
+M.switched_to_update_branch = { { "Switched to update branch ", "Title" }, { "<UPDATE_BRANCH>" }, { ".", "Title" } }
 return M

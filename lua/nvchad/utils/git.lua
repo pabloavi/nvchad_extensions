@@ -34,7 +34,7 @@ M.get_remote_head = function(branch)
       true)
 
    if result then
-      return result:match "(%w*)"
+      return result:match "([%w\\_\\-.]*)"
    end
 
    return ""
@@ -45,7 +45,7 @@ M.get_local_head = function()
    local result = utils.cmd("git -C " .. M.config_path .. " rev-parse HEAD", false)
 
    if result then
-      return result:match "(%w*)"
+      return result:match "([%w\\_\\-.]*)"
    end
 
    return ""
@@ -82,15 +82,19 @@ M.validate_dir = function()
 end
 
 -- checkout a given branch
-M.checkout_branch = function(branch)
-   local result = utils.cmd("git -C " .. M.config_path .. " checkout " .. branch, true)
+M.checkout_branch = function(branch, silent)
+   utils.cmd("git -C " .. M.config_path .. " checkout " .. branch, not silent)
    local current_branch_name = M.get_current_branch_name()
 
-   if result and current_branch_name == branch then
+   if current_branch_name == branch then
       return true
    end
 
-   echo(misc.list_text_replace(prompts.checkout_failed, "<BRANCH_NAME>", branch))
+   if not silent then
+      echo(misc.list_text_replace(prompts.checkout_failed,
+         { "<NEW_BRANCH_NAME>", "<OLD_BRANCH_NAME>" }, { branch, current_branch_name }))
+   end
+
    return false
 end
 
@@ -99,7 +103,7 @@ M.get_current_branch_name = function()
    local result = utils.cmd("git -C " .. M.config_path .. " rev-parse --abbrev-ref HEAD", false)
 
    if result then
-      return result:match "(%w*)"
+      return result:match "([%w\\_\\-.]*)"
    end
 
    return ""
@@ -107,10 +111,13 @@ end
 
 -- returns the currently checked out branch name
 M.reset = function(...)
+   local args = misc.table_pack(...)
+   args.n = nil
+
    local result = utils.cmd(
       "git -C "
       .. M.config_path
-      .. " reset" .. ... and table.concat(..., " ") or ""
+      .. " reset" .. (... and table.concat(args, " ") or "")
       , false)
 
    if not result then
@@ -123,10 +130,13 @@ end
 
 -- returns the currently checked out branch name
 M.restore = function(...)
+   local args = misc.table_pack(...)
+   args.n = nil
+
    local result = utils.cmd(
       "git -C "
       .. M.config_path
-      .. " restore" .. ... and table.concat(..., " ") or ""
+      .. " restore " .. (... and table.concat(args, " ") or "")
       , false)
 
    if not result then
@@ -158,7 +168,7 @@ M.get_last_commit_message = function()
    local result = utils.cmd("git -C " .. M.config_path .. " log -1 --pretty=%B", false)
 
    if result then
-      return result:match "(%w*)"
+      return result:match "([%w\\_\\-.]*)"
    end
 
    return ""
@@ -217,24 +227,27 @@ M.is_shallow = function()
 end
 
 M.add = function(...)
+   local args = misc.table_pack(...)
+   args.n = nil
+
    local result = utils.cmd(
       "git -C "
       .. M.config_path
-      .. " add " .. ... and table.concat(..., " ") or ""
+      .. " add " .. (... and table.concat(args, " ") or "")
       , true)
 
    if result then
       return true
    end
 
-   echo(misc.list_text_replace(prompts.add_failed, "<FILE_PATH>", file_path))
+   echo(misc.list_text_replace(prompts.add_failed, "<FILE_PATH>", args[#args - 1]))
 end
 
 M.get_initial_commit_hash = function()
    local result = utils.cmd("git -C " .. M.config_path .. " rev-list --max-parents=0 HEAD", false)
 
    if result then
-      return result:match "(%w*)"
+      return result:match "([%w\\_\\-.]*)"
    end
 
    echo(prompts.get_initial_commit_hash_failed)
@@ -260,10 +273,13 @@ M.squash_commits_from_hash = function(start_hash)
 end
 
 M.create_commit = function(...)
+   local args = misc.table_pack(...)
+   args.n = nil
+
    local result = utils.cmd(
       "git -C "
       .. M.config_path
-      .. " commit " .. ... and table.concat(..., " ") or "",
+      .. " commit " .. (... and table.concat(args, " ") or ""),
       false
    )
 
@@ -354,27 +370,14 @@ M.get_stash_list = function()
    return vim.fn.split(stash_list_string, "\n")
 end
 
-M.get_stash_index = function(stash_name)
-   local stash_list = M.get_stash_list()
-
-   if stash_list == nil then
-      return -1
-   end
-
-   for i, stash in ipairs(stash_list) do
-      if stash:match(stash_name) then
-         return i
-      end
-   end
-
-   return -1
-end
-
 M.stash = function(...)
+   local args = misc.table_pack(...)
+   args.n = nil
+
    local result = utils.cmd(
       "git -C "
       .. M.config_path
-      .. " stash " .. ... and table.concat(..., " ") or "",
+      .. " stash " .. (... and table.concat(args, " ") or ""),
       true
    )
 
@@ -384,6 +387,31 @@ M.stash = function(...)
 
    echo(prompts.stash_failed)
    return false
+end
+
+M.stash_action_for_entry_by_name = function(action, stash_name, min, max)
+   local stash_list = M.get_stash_list()
+   local found_entries = 0
+   local handled_entries = 0
+
+   if stash_list == nil then
+      return false
+   end
+
+   for i, stash in ipairs(stash_list) do
+      if stash:match(stash_name) then
+         found_entries = found_entries + 1
+         if not min or found_entries > min then
+            if max and max - found_entries < 0 then break end
+            local result = M.stash(action, "stash@{" .. i - 1 - handled_entries .. "}")
+            if result then
+               handled_entries = handled_entries + 1
+            end
+         end
+      end
+   end
+
+   return handled_entries > 0
 end
 
 -- if the updater failed to remove the last tmp commit remove it

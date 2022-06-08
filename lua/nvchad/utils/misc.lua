@@ -71,4 +71,12 @@ M.get_human_readables = function(count)
    return human_readable_dict
 end
 
+M.table_pack = function(...)
+   return { n = select("#", ...), ... }
+end
+
+M.replace_whitespaces = function(branch_name)
+   return branch_name:gsub("%W", "_"):gsub(" ", "_")
+end
+
 return M

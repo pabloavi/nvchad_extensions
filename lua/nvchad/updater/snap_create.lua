@@ -1,22 +1,22 @@
 local function snap_create()
-   -- in all the comments below, config means user config
    local utils = require "nvchad"
    local git = require 'nvchad.utils.git'
    local misc = require 'nvchad.utils.misc'
+   local defaults = require 'nvchad.utils.config'
    local prompts = require 'nvchad.utils.prompts'
    local echo = utils.echo
-   local base_snap_branch_name = "NvChad_Snapshot_"
-   local config_stash_name = "NvChad_Snapshot_Custom_Dir_Backup_" .. os.date("%Y-%m-%d_%H:%M:%S_%z")
+   local config_stash_name = defaults.snaps.base_config_stash_name .. os.date("%Y-%m-%d_%H:%M:%S_%z")
+   local current_branch_name = git.get_current_branch_name()
 
-   local function normalize_branch_name(branch_name)
-      return branch_name:gsub("%W", "_"):gsub(" ", "_")
+   -- return if we are already on a snapshot branch
+   if current_branch_name:match(defaults.snaps.base_snap_branch_name .. "(.+)" .. "$") then
+      echo(misc.list_text_replace(prompts.already_on_snapshot_branch, "<SNAP_NAME>",
+         current_branch_name))
+      return
    end
 
    -- check if we are on the correct update branch, if not, switch to it
-   if git.checkout_branch(git.update_branch) then
-      echo(misc.list_text_replace(prompts.switched_to_update_branch, "<UPDATE_BRANCH>",
-         git.update_branch))
-   else
+   if not git.checkout_branch(git.update_branch) then
       return
    end
 
@@ -30,49 +30,53 @@ local function snap_create()
       return
    end
 
-   local branch_name = base_snap_branch_name .. normalize_branch_name(name)
+   local branch_name = defaults.snaps.base_snap_branch_name .. misc.replace_whitespaces(name)
 
    -- create a backup of the current custom dir in the stash if it exists
-   if git.add('lua/custom', '-f') then
+   if git.add('"' .. defaults.custom.config_dir .. '"', '-f') then
       echo(misc.list_text_replace(prompts.stashing_custom_dir, "<STASH_NAME>", config_stash_name))
 
-      git.stash('store', '"$(git stash create lua/custom)"', '-m ' .. config_stash_name)
-      git.restore("--staged", "lua/custom")
+      git.stash('store', '"$(git stash create ' .. defaults.custom.config_dir
+         .. ')"', '-m ' .. config_stash_name)
+      git.restore("--staged", defaults.custom.config_dir)
    end
 
+   -- drop old config backup stash entries
+   git.stash_action_for_entry_by_name('drop', defaults.snaps.base_config_stash_name, 4)
+
    -- check if the branch already exists
-   while git.checkout_branch(branch_name) do
+   while git.checkout_branch(branch_name, true) do
+
       echo(misc.list_text_replace(prompts.branch_already_exists, "<BRANCH_NAME>", branch_name))
       name = string.lower(vim.fn.input("-> "));
 
       misc.print_padding("\n", 2)
 
       if name == "o" then
-         if not git.checkout_branch(git.update_branch) then
-            return
-         end
-         if not git.delete_branch(branch_name) then
-            return
-         end
+         if not git.checkout_branch(git.update_branch) then return end
+         if not git.stash("apply") then return end
+         if not git.delete_branch(branch_name) then return end
          echo(misc.list_text_replace(prompts.branch_deleted, "<BRANCH_NAME>", branch_name))
          break
       elseif name == "a" then
-         if not git.checkout_branch(git.update_branch) then
-            return
-         end
+         if not git.checkout_branch(git.update_branch) then return end
+
          echo(misc.list_text_replace(prompts.switched_to_update_branch, "<UPDATE_BRANCH>",
             git.update_branch))
-         git.stash("drop")
-         return
-      end
 
-      branch_name = base_snap_branch_name .. normalize_branch_name(name)
+         if not git.stash("pop") then return end
+         return
+      else
+         branch_name = defaults.snaps.base_snap_branch_name .. misc.replace_whitespaces(name)
+         if not git.checkout_branch(git.update_branch) then return end
+         if not git.stash("apply") then return end
+      end
    end
 
    echo(misc.list_text_replace(prompts.snapshot_creating_branch, "<BRANCH_NAME>", branch_name))
 
    -- create a packer snapshot using "PackerSnapshot"
-   -- vim.cmd("PackerSnapshot " .. branch_name)
+   vim.cmd("PackerSnapshot " .. branch_name)
 
    -- create and checkout snap branch
    if not git.create_branch(branch_name) then
@@ -81,14 +85,15 @@ local function snap_create()
    end
 
    -- set the packer snapshot for this nvchad snap
-   -- utils.write_data("return M", 'M.plugins.override["wbthomason/packer.nvim"] = { snapshot = "'
-   --    .. branch_name .. '" }\n\nreturn M')
+   utils.write_data("return M", 'M.plugins.override["wbthomason/packer.nvim"] = { snapshot = "'
+      .. branch_name .. '" }\n\nreturn M')
 
-   if not git.add('lua/custom', '-f') then
+   if not git.add('"' .. defaults.custom.config_dir .. '"', '-f') then
       return
    end
 
-   if not git.create_commit("-m 'NvChad_Snapshot_tmp_commit_" .. branch_name .. "'") then
+   if not git.create_commit("-m '" .. defaults.snaps.base_tmp_commit_message .. branch_name
+      .. "'") then
       return
    end
 
@@ -98,7 +103,7 @@ local function snap_create()
       return
    end
 
-   local commit_msg = "NvChad_Snapshot_of_commit_" .. git.get_local_head()
+   local commit_msg = defaults.snaps.base_commit_message .. git.get_local_head()
 
    echo(misc.list_text_replace(prompts.snapshot_compressing_branch, "<BRANCH_NAME>", branch_name))
 
@@ -108,20 +113,16 @@ local function snap_create()
    end
 
    misc.print_padding("\n", 1)
-   echo(misc.list_text_replace(prompts.snapshot_successfully_created, "<SNAP_NAME>", name))
+   echo(misc.list_text_replace(prompts.snapshot_successfully_created, "<SNAP_NAME>", branch_name))
 
    -- -- return to the update branch
    if not git.checkout_branch(git.update_branch) then
       return
    end
 
-   local stash_index = git.get_stash_index(config_stash_name)
+   git.stash_action_for_entry_by_name('apply', defaults.snaps.base_config_stash_name, 0, 1)
 
-   if stash_index == -1 then stash_index = 0 end
-
-   git.stash('apply', stash_index)
-
-   if not git.restore("--staged", "lua/custom") then
+   if not git.restore("--staged", defaults.custom.config_dir) then
       return
    end
 

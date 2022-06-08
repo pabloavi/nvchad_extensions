@@ -107,11 +107,11 @@ M.update_nvchad = require "nvchad.updater.update"
 -- create snapshot
 M.snap_create = require "nvchad.updater.snap_create"
 
+-- checkout snapshot
+M.snap_checkout = require "nvchad.updater.snap_checkout"
+
 -- delete snapshot
 M.snap_delete = require "nvchad.updater.snap_delete"
-
--- rollback nvchad
-M.rollback = require "nvchad.updater.rollback"
 
 M.write_data = function(old_data, new_data)
    local file_fn = require("nvchad").file

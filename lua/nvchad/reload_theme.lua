@@ -17,17 +17,6 @@ local function reload_theme(theme_name)
 
    vim.g.nvchad_theme = theme_name
 
-   local reload = require("plenary.reload").reload_module
-   local clear_hl = require("base46").clear_highlights
-
-   clear_hl "BufferLine"
-   clear_hl "TS"
-
-   -- reload highlights for theme switcher
-   reload "base46.integrations"
-   reload "base46.chadlights"
-   -- reload "custom"
-
    -- reload the base46 theme and highlights
    require("base46").load_theme()
 

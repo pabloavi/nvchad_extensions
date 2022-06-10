@@ -79,7 +79,7 @@ end
 M.list_themes = function()
    local themes = {}
 
-   local default_themes = vim.fn.stdpath "data" .. "/site/pack/packer/opt/base46/lua/hl_themes"
+   local default_themes = vim.fn.stdpath "data" .. "/site/pack/packer/opt/base46/lua/base46/themes"
    local user_themes = vim.fn.stdpath "config" .. "/lua/custom/themes"
 
    -- list all theme files in above dirs into a table

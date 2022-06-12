@@ -30,6 +30,7 @@ local function snap_create()
       return
    end
 
+   -- make sure that chadrc.lua exists, if not create it as a copy of the example
    local result = misc.ensure_file_exists(defaults.custom.default_chadrc_path,
       misc.get_example_chadrc())
 

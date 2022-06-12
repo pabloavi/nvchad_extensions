@@ -109,6 +109,45 @@ M.get_current_branch_name = function()
    return ""
 end
 
+M.branch = function(...)
+   local args = misc.table_pack(...)
+   args.n = nil
+   local command = (... and table.concat(args, " ") or "")
+
+   local result = utils.cmd(
+      "git -C "
+      .. M.config_path
+      .. " branch " .. command
+      , false)
+
+   if not result then
+      echo(misc.list_text_replace(prompts.branch_failed, { "<BRANCH_ACTION>" }, { "git -C "
+          .. M.config_path
+          .. " branch " .. command
+      }))
+      return false
+   end
+
+   return result
+end
+
+M.get_branch_list = function(filter)
+   local result = M.branch("--list")
+
+   if result then
+      local branch_list = vim.fn.split(result, "\n")
+      branch_list = vim.tbl_map(vim.trim, branch_list)
+
+      if type(filter) == "function" then
+         return vim.tbl_filter(filter, branch_list)
+      end
+
+      return branch_list
+   end
+
+   return {}
+end
+
 -- returns the currently checked out branch name
 M.reset = function(...)
    local args = misc.table_pack(...)
@@ -117,7 +156,7 @@ M.reset = function(...)
    local result = utils.cmd(
       "git -C "
       .. M.config_path
-      .. " reset" .. (... and table.concat(args, " ") or "")
+      .. " reset " .. (... and table.concat(args, " ") or "")
       , false)
 
    if not result then
@@ -205,7 +244,7 @@ M.create_branch = function(branch_name)
 end
 
 M.delete_branch = function(branch_name)
-   local result = utils.cmd("git -C " .. M.config_path .. " branch -D " .. branch_name, true)
+   local result = M.branch("-D", branch_name)
 
    if result then
       return true

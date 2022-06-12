@@ -14,6 +14,7 @@ M.branch_delete_failed = { { "Deleting branch ", "WarningMsg" }, { "<BRANCH_NAME
 M.branch_deleted = { { "Branch ", "WarningMsg" }, { "<BRANCH_NAME>" }, { " deleted succesfully!\n", "WarningMsg" } }
 M.breaking_changes_found = { { "\nFound", "Title" }, { " <BREAKING_CHANGES_COUNT> " },
    { "potentially breaking ", "Title" }, { "<HR_CHANGE>", "Title" }, { ":\n", "Title" } }
+M.branch_failed = { { "Branch action ", "WarningMsg" }, { "<BRANCH_ACTION>" }, { " failed!", "WarningMsg" } }
 M.chadrc_file_not_created = { { "Error: Could not create ", "WarningMsg" }, { "<FILE_PATH>" },
    { "! Please create it manually and try again.", "WarningMsg" } }
 M.checking_for_updates = { { "Checking for updates...", "String" } }

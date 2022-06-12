@@ -84,9 +84,20 @@ local function snap_create()
       return
    end
 
+   -- add packer snapshot to chadrc override
+   local override_config = {
+      plugins = {
+         override = {
+            ["wbthomason/packer.nvim"] = { snapshot = branch_name }
+         }
+      }
+   }
+
+   override_config = vim.tbl_deep_extend("force", git.current_config, override_config)
+
    -- set the packer snapshot for this nvchad snap
-   utils.write_data("return M", 'M.plugins.override["wbthomason/packer.nvim"] = { snapshot = "'
-      .. branch_name .. '" }\n\nreturn M')
+   utils.write_data('return M', 'M.plugins.override = {\n'
+      .. misc.table_to_string(override_config.plugins.override) .. '\n}\n\nreturn M')
 
    if not git.add('"' .. defaults.custom.config_dir .. '"', '-f') then
       return

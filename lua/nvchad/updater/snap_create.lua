@@ -30,6 +30,15 @@ local function snap_create()
       return
    end
 
+   local result = misc.ensure_file_exists(defaults.custom.default_chadrc_path,
+      misc.get_example_chadrc())
+
+   if not result then
+      echo(misc.list_text_replace(prompts.chadrc_file_not_created, "<FILE_PATH>",
+         defaults.custom.default_chadrc_path))
+      return false
+   end
+
    local branch_name = defaults.snaps.base_snap_branch_name .. misc.replace_whitespaces(name)
 
    -- create a backup of the current custom dir in the stash if it exists
@@ -93,11 +102,13 @@ local function snap_create()
       }
    }
 
+   -- merge custom and override values
    override_config = vim.tbl_deep_extend("force", git.current_config, override_config)
 
    -- set the packer snapshot for this nvchad snap
-   utils.write_data('return M', 'M.plugins.override = {\n'
-      .. misc.table_to_string(override_config.plugins.override) .. '\n}\n\nreturn M')
+   utils.write_data('return M', (type(git.current_config.plugins) == 'table' and ''
+       or 'M.plugins = {}\n\n') .. 'M.plugins.override = {\n' ..
+      misc.table_to_string(override_config.plugins.override) .. '}\n\nreturn M')
 
    if not git.add('"' .. defaults.custom.config_dir .. '"', '-f') then
       return

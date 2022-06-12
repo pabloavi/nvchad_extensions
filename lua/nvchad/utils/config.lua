@@ -2,6 +2,8 @@ local M = {}
 
 M.custom = {
    config_dir = "lua/custom",
+   default_chadrc_example_path = vim.fn.stdpath "config" .. "/examples/" .. "chadrc.lua",
+   default_chadrc_path = vim.fn.stdpath "config" .. "/lua/custom/" .. "chadrc.lua",
 }
 
 M.snaps = {

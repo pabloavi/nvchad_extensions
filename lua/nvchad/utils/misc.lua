@@ -112,4 +112,44 @@ M.replace_whitespaces = function(branch_name)
    return branch_name:gsub("%W", "_"):gsub(" ", "_")
 end
 
+-- ensures the given file_path is a valid path
+-- if the file at file_path does not exist, it will be created with the given default_content
+M.ensure_file_exists = function(file_path, default_content)
+   -- store in data variable
+   local data = utils.file("r", file_path)
+
+   -- check if data is false or nil and create a default file if it is
+   if not data then
+      utils.file("w", file_path, default_content)
+      data = utils.file("r", file_path)
+   end
+
+   -- if the file was still not created, then something went wrong
+   if not data then
+      print(
+         "Error: Could not create: "
+         .. file_path
+         .. ". Please create it manually to set a default "
+         .. "theme. Look at the documentation for more info."
+      )
+      return false
+   end
+
+   return true
+end
+
+M.get_example_chadrc = function()
+   local chadrc_path = require('nvchad.utils.config').custom.default_chadrc_example_path
+
+   -- store in data variable
+   local data = utils.file("r", chadrc_path)
+
+   if not data then
+      print("Error: Could not read exmaple chadrc!")
+      return false
+   end
+
+   return data
+end
+
 return M

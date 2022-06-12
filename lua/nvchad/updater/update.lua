@@ -1,9 +1,9 @@
 local function update()
    -- in all the comments below, config means user config
    local utils = require "nvchad"
-   local git = require 'nvchad.updater.utils.git'
-   local misc = require 'nvchad.updater.utils.misc'
-   local prompts = require 'nvchad.updater.utils.prompts'
+   local git = require 'nvchad.utils.git'
+   local misc = require 'nvchad.utils.misc'
+   local prompts = require 'nvchad.utils.prompts'
    local echo = utils.echo
    local continue, skip_confirmation = false, false
 

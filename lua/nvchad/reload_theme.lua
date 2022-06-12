@@ -7,7 +7,7 @@ local function reload_theme(theme_name)
       theme_name = vim.g.nvchad_theme
    end
 
-   local default_themes = pcall(require, "hl_themes." .. theme_name)
+   local default_themes = pcall(require, "base46.themes." .. theme_name)
    local user_themes = pcall(require, "custom.themes." .. theme_name)
 
    if not default_themes and not user_themes then

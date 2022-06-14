@@ -51,9 +51,28 @@ M.get_local_head = function()
    return ""
 end
 
+M.commit = function(...)
+   local args = misc.table_pack(...)
+   args.n = nil
+
+   local result = utils.cmd(
+      "git -C "
+      .. M.config_path
+      .. " commit " .. (... and table.concat(args, " ") or ""),
+      false
+   )
+
+   if result then
+      return true
+   end
+
+   return false
+end
+
 -- check if the NvChad directory is a valid git repo
-M.validate_dir = function()
+M.validate_dir = function(commit_msg)
    local valid = true
+   commit_msg = commit_msg or "tmp"
 
    -- save the current sha of the local HEAD
    M.current_sha = M.get_local_head()
@@ -62,7 +81,7 @@ M.validate_dir = function()
    if M.current_sha ~= "" then
 
       -- create a tmp snapshot of the current repo state
-      utils.cmd("git -C " .. M.config_path .. " commit -a -m 'tmp'", false)
+      M.commit("-a", "-m", "'" .. commit_msg .. "'")
       M.backup_sha = M.get_local_head()
 
       if M.backup_sha == "" then
@@ -311,25 +330,6 @@ M.squash_commits_from_hash = function(start_hash)
    return false
 end
 
-M.create_commit = function(...)
-   local args = misc.table_pack(...)
-   args.n = nil
-
-   local result = utils.cmd(
-      "git -C "
-      .. M.config_path
-      .. " commit " .. (... and table.concat(args, " ") or ""),
-      false
-   )
-
-   if result then
-      return true
-   end
-
-   echo(prompts.create_commit_failed)
-   return false
-end
-
 M.get_author_identity = function()
    local author_name = utils.cmd("git -C " .. M.config_path .. " config --get user.name", false)
    local author_email = utils.cmd("git -C " .. M.config_path .. " config --get user.email", false)
@@ -359,7 +359,7 @@ M.squash_commit_history = function(commit_message, author_name, author_email, au
    end
 
    -- commit the squashed history
-   local commit_state = M.create_commit("-m " .. commit_message, (author_name and " --author='"
+   local commit_state = M.commit("-m " .. commit_message, (author_name and " --author='"
        .. author_name or "") .. (author_name and author_email and " <" .. author_email .. ">'"
        or ""), (author_time_zone and " --date='" .. author_time_zone .. "'" or ""), "--amend")
 

@@ -20,20 +20,22 @@ M = {}
 
 -- replace any occurances of old_text in text_list with new_text
 M.list_text_replace = function(text_list, old_text, new_text)
+   local new_tbl = vim.deepcopy(text_list)
+
    if type(old_text) == 'table' and type(new_text) == 'table' and #old_text == #new_text then
 
       for i, v in ipairs(old_text) do
-         list_text_replace(text_list, v, new_text[i])
+         list_text_replace(new_tbl, v, new_text[i])
       end
 
    elseif type(old_text) == 'string' and type(new_text) == 'string' then
-      list_text_replace(text_list, old_text, new_text)
+      list_text_replace(new_tbl, old_text, new_text)
    end
-   return text_list
+   return new_tbl
 end
 
--- print the passed symbol print_count amount of times
-M.print_padding = function(symbol, repeat_count)
+-- print the passed symbol print_count amount of times or return a string
+M.print_padding = function(symbol, repeat_count, return_string)
    local padding = ''
 
    while repeat_count > 0 do
@@ -41,7 +43,11 @@ M.print_padding = function(symbol, repeat_count)
       repeat_count = repeat_count - 1
    end
 
-   echo { { padding } }
+   if return_string then
+      return padding
+   else
+      echo { { padding } }
+   end
 end
 
 -- prompt the user to execute PackerSync

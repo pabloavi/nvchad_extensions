@@ -17,6 +17,7 @@ M.branch_failed = { { "Branch action ", "WarningMsg" }, { "<BRANCH_ACTION>" }, {
 M.breaking_changes_found = { { "\nFound", "Title" }, { " <BREAKING_CHANGES_COUNT> " }, { "potentially breaking ", "Title" }, { "<HR_CHANGE>", "Title" }, { ":\n", "Title" } }
 M.cancelled_action = { { "Action ", "Title" }, { "<ACTION>" }, { " cancelled!", "Title" } }
 M.cannot_delete_current_snapshot = { { "Error: You cannot delete a snapshot that is currently in use!\n\n", "ErrorMsg" } }
+M.cannot_update_snapshot = { { "Error: You cannot update while using a NvChadSnapshot! Use \"NvChadSnapshotCheckout\" to return to the update branch and try again.", "ErrorMsg" } }
 M.chadrc_file_not_created = { { "Error: Could not create ", "WarningMsg" }, { "<FILE_PATH>" }, { "! Please create it manually and try again.", "WarningMsg" } }
 M.checking_for_updates = { { "Checking for updates...", "String" } }
 M.checkout = { { "\nChecking out branch ", "WarningMsg" }, { "<BRANCH_NAME>" } }

@@ -3,9 +3,17 @@ local function update()
    local utils = require "nvchad"
    local git = require 'nvchad.utils.git'
    local misc = require 'nvchad.utils.misc'
+   local defaults = require 'nvchad.utils.config'
    local prompts = require 'nvchad.utils.prompts'
    local echo = utils.echo
+   local current_branch_name = git.get_current_branch_name()
    local continue, skip_confirmation = false, false
+
+   -- check if we are on a snapshot branch
+   if current_branch_name:match("^" .. defaults.snaps.base_snap_branch_name) then
+      echo(prompts.cannot_update_snapshot)
+      return
+   end
 
    -- check if we are on the correct update branch, if not, switch to it
    if not git.checkout_branch(git.update_branch) then

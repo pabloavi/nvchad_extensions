@@ -76,7 +76,7 @@ local function theme_switcher(opts)
          sorter = conf.generic_sorter(opts),
          attach_mappings = function()
             actions.select_default:replace(
-               -- if a entry is selected, change current_theme to that
+            -- if a entry is selected, change current_theme to that
                function(prompt_bufnr)
                   local selection = action_state.get_selected_entry()
                   new_theme = selection.value

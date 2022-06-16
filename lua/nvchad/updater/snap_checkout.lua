@@ -116,6 +116,7 @@ local function snap_checkout()
 
       -- drop old config backup stash entries (we only keep the 4 newest entries for safety)
       git.stash_action_for_entry_by_name('drop', defaults.snaps.base_config_stash_name, 4)
+      misc.print_padding("\n", 1)
 
    elseif current_branch_name:match(defaults.snaps.base_snap_branch_name) then
 
@@ -140,7 +141,6 @@ local function snap_checkout()
    end
 
    -- print success message
-   misc.print_padding("\n", 1)
    echo(misc.list_text_replace(prompts.checkout_success, "<NEW_BRANCH_NAME>",
       snapshot_list[number]))
 end

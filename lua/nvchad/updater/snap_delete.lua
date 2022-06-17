@@ -1,4 +1,5 @@
 local function snap_delete()
+   local p_snapshot = require("packer.snapshot")
    local utils = require "nvchad"
    local git = require 'nvchad.utils.git'
    local misc = require 'nvchad.utils.misc'
@@ -105,7 +106,7 @@ local function snap_delete()
             if git.delete_branch(snapshot_list[number]) then
 
                -- delete the corresponding "PackerSnapshot"
-               vim.cmd("PackerSnapshotDelete " .. snapshot_list[number])
+               p_snapshot.delete(snapshot_list[number])
 
                -- add the current value to the valid inputs list
                vim.list_extend(valid_selection_list,

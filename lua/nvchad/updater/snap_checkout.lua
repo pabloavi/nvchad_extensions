@@ -1,4 +1,5 @@
 local function snap_checkout()
+   local packer = require("packer")
    local utils = require "nvchad"
    local git = require 'nvchad.utils.git'
    local misc = require 'nvchad.utils.misc'
@@ -138,6 +139,10 @@ local function snap_checkout()
          echo(misc.list_text_replace(prompts.applying_git_stash_failed, "<BRANCH_NAME>",
             snapshot_list[number]))
       end
+   elseif snapshot_list[number]:match(defaults.snaps.base_snap_branch_name) then
+
+      -- rollback to selected snapshot
+      packer.rollback(snapshot_list[number])
    end
 
    -- print success message

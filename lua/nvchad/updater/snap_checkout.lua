@@ -109,8 +109,8 @@ local function snap_checkout()
          echo(misc.list_text_replace(prompts.stashing_custom_dir, "<STASH_NAME>",
             config_stash_name))
 
-         git.stash('store', '"$(git stash create ' .. defaults.custom.config_dir
-            .. ')"', '-m ' .. config_stash_name)
+         git.stash('store', '"$(git  -C ' .. git.config_path .. ' stash create '
+            .. defaults.custom.config_dir .. ')"', '-m ' .. config_stash_name)
          git.restore("--staged", defaults.custom.config_dir)
       end
 

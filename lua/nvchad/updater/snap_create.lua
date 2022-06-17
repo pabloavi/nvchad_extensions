@@ -105,7 +105,7 @@ local function snap_create()
    echo(misc.list_text_replace(prompts.snapshot_creating_branch, "<BRANCH_NAME>", branch_name))
 
    -- create a packer snapshot
-   packer.snapshot(branch_name, {})
+   packer.snapshot(branch_name)
 
    -- create and checkout snapshot branch
    if not git.create_branch(branch_name) then
@@ -174,6 +174,8 @@ local function snap_create()
    end
 
    -- rollback to selected snapshot
+   echo(prompts.wait_for_rollback_to_complete)
+
    packer.rollback(branch_name)
 end
 

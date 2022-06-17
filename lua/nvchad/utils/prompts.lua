@@ -77,5 +77,6 @@ M.update_continue = { { "\nWould you still like to continue with the update? [y/
 M.update_failed = { { "\nError: NvChad Update failed.", "ErrorMsg" } }
 M.update_failed_changes_restored = { { "Error: NvChad Update failed.\n\n", "ErrorMsg" }, { "Local changes were restored." } }
 M.update_success = { { "\nNvChad succesfully updated.\n", "String" } }
+M.wait_for_rollback_to_complete = { { "Packer will now start rolling back your custom plugins. This will take several seconds. Please wait for the completion notification and restart your editor. Do not run \"PackerSync\" while using a NvChadSnapshot!", "WarningMsg" } }
 
 return M

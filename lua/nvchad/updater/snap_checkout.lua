@@ -144,6 +144,8 @@ local function snap_checkout()
    elseif snapshot_list[number]:match(defaults.snaps.base_snap_branch_name) then
 
       -- rollback to selected snapshot
+      echo(prompts.wait_for_rollback_to_complete)
+
       packer.rollback(snapshot_list[number])
    end
 

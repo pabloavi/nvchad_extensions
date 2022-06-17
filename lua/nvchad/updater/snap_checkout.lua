@@ -106,13 +106,13 @@ local function snap_checkout()
       end
 
       -- create a backup of the current custom dir in the git stash and restore the repo state
-      if git.add('"' .. defaults.custom.config_dir .. '"', '-f') then
+      if git.add('"' .. defaults.custom.config_dir_rel .. '"', '-f') then
          echo(misc.list_text_replace(prompts.stashing_custom_dir, "<STASH_NAME>",
             config_stash_name))
 
          git.stash('store', '"$(git  -C ' .. git.config_path .. ' stash create '
-            .. defaults.custom.config_dir .. ')"', '-m ' .. config_stash_name)
-         git.restore("--staged", defaults.custom.config_dir)
+            .. defaults.custom.config_dir_rel .. ')"', '-m ' .. config_stash_name)
+         git.restore("--staged", defaults.custom.config_dir_rel)
       end
 
       -- drop old config backup stash entries (we only keep the 4 newest entries for safety)
@@ -133,11 +133,13 @@ local function snap_checkout()
 
    -- if the selected branch is the update branch we will have to restore the custom dir from stash
    if (selected_is_update_branch) then
-      if git.stash("apply") then
-         git.restore("--staged", defaults.custom.config_dir)
-      else
-         echo(misc.list_text_replace(prompts.applying_git_stash_failed, "<BRANCH_NAME>",
-            snapshot_list[number]))
+      if not vim.fn.isdirectory(defaults.custom.config_dir_abs) then
+         if git.stash("apply") then
+            git.restore("--staged", defaults.custom.config_dir_rel)
+         else
+            echo(misc.list_text_replace(prompts.applying_git_stash_failed, "<BRANCH_NAME>",
+               snapshot_list[number]))
+         end
       end
    elseif snapshot_list[number]:match(defaults.snaps.base_snap_branch_name) then
 

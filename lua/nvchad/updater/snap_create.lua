@@ -55,13 +55,13 @@ local function snap_create()
    local squash_commit_msg = defaults.snaps.base_commit_message .. git.get_local_head()
 
    -- create a backup of the current custom dir in the git stash and restore the repo state
-   if git.add('"' .. defaults.custom.config_dir .. '"', '-f') then
+   if git.add('"' .. defaults.custom.config_dir_rel .. '"', '-f') then
       echo(misc.list_text_replace(prompts.stashing_custom_dir, "<STASH_NAME>", config_stash_name))
       misc.print_padding('\n', 1)
 
       git.stash('store', '"$(git  -C ' .. git.config_path .. ' stash create '
-         .. defaults.custom.config_dir .. ')"', '-m ' .. config_stash_name)
-      git.restore("--staged", defaults.custom.config_dir)
+         .. defaults.custom.config_dir_rel .. ')"', '-m ' .. config_stash_name)
+      git.restore("--staged", defaults.custom.config_dir_rel)
    end
 
    -- drop old config backup stash entries (we only keep the 4 newest entries for safety)
@@ -114,7 +114,7 @@ local function snap_create()
    end
 
    -- force stage the custom folder
-   if not git.add('"' .. defaults.custom.config_dir .. '"', '-f') then
+   if not git.add('"' .. defaults.custom.config_dir_rel .. '"', '-f') then
       return
    end
 
@@ -152,7 +152,7 @@ local function snap_create()
    git.stash_action_for_entry_by_name('apply', defaults.snaps.base_config_stash_name, 0, 1)
 
    -- since the custom dir should be ignored in the git history, we restore the staged files
-   if not git.restore("--staged", defaults.custom.config_dir) then
+   if not git.restore("--staged", defaults.custom.config_dir_rel) then
       return
    end
 

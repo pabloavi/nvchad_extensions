@@ -133,7 +133,7 @@ local function snap_checkout()
 
    -- if the selected branch is the update branch we will have to restore the custom dir from stash
    if (selected_is_update_branch) then
-      if not vim.fn.isdirectory(defaults.custom.config_dir_abs) then
+      if vim.fn.isdirectory(defaults.custom.config_dir_abs) == 0 then
          if git.stash("apply") then
             git.restore("--staged", defaults.custom.config_dir_rel)
          else

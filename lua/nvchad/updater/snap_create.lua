@@ -174,6 +174,7 @@ local function snap_create()
    end
 
    -- rollback to selected snapshot
+   misc.print_padding("\n", 2)
    echo(prompts.wait_for_rollback_to_complete)
 
    packer.rollback(branch_name)

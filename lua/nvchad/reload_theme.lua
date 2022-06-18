@@ -1,25 +1,3 @@
-local base46 = require "base46"
-
-local load_all_highlights = function()
-   vim.opt.bg = base46.get_theme_tb "type" -- dark/light
-
-   -- reload highlights for theme switcher
-   local reload = require("plenary.reload").reload_module
-   local clear_hl = require("base46").clear_highlights
-
-   clear_hl "BufferLine"
-   clear_hl "TS"
-
-   reload "base46.integrations"
-   reload "base46.chadlights"
-
-   local hl_groups = require "base46.chadlights"
-
-   for hl, col in pairs(hl_groups) do
-      vim.api.nvim_set_hl(0, hl, col)
-   end
-end
-
 -- reload themes without restarting vim
 -- if no theme name given then reload the current theme
 
@@ -38,7 +16,7 @@ local function reload_theme(theme_name)
    end
 
    vim.g.nvchad_theme = theme_name
-   load_all_highlights()
+   require("base46").load_all_highlights()
 
    return true
 end

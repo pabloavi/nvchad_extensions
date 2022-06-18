@@ -1,4 +1,5 @@
 local M = {}
+local fn = vim.fn
 
 -- Edit user config file, based on the assumption it exists in the config as
 -- theme = "theme name"
@@ -25,9 +26,9 @@ end
 -- clear last echo using feedkeys (this is a bit hacky)
 M.clear_last_echo = function()
    -- wrap this with inputsave and inputrestore just in case
-   vim.fn.inputsave()
+   fn.inputsave()
    vim.api.nvim_feedkeys(":", "nx", true)
-   vim.fn.inputrestore()
+   fn.inputrestore()
 end
 
 -- a wrapper for running terminal commands that also handles errors
@@ -35,7 +36,7 @@ end
 -- 2nd arg - a boolean to indicate whether to print possible errors
 -- returns the result if successful, nil otherwise
 M.cmd = function(cmd, print_error)
-   local result = vim.fn.system(cmd)
+   local result = fn.system(cmd)
    if vim.api.nvim_get_vvar "shell_error" ~= 0 then
       if print_error then
          vim.api.nvim_err_writeln("Error running command:\n" .. cmd .. "\nError message:\n" .. result)
@@ -51,14 +52,14 @@ end
 -- return file data on read, nothing on write
 M.file = function(mode, filepath, content)
    local data
-   local base_dir = vim.fn.fnamemodify(filepath, ":h")
+   local base_dir = fn.fnamemodify(filepath, ":h")
    -- check if file exists in filepath, return false if not
-   if mode == "r" and vim.fn.filereadable(filepath) == 0 then
+   if mode == "r" and fn.filereadable(filepath) == 0 then
       return false
    end
    -- check if directory exists, create it and all parents if not
-   if mode == "w" and vim.fn.isdirectory(base_dir) == 0 then
-      vim.fn.mkdir(base_dir, "p")
+   if mode == "w" and fn.isdirectory(base_dir) == 0 then
+      fn.mkdir(base_dir, "p")
    end
    local fd = assert(vim.loop.fs_open(filepath, mode, 438))
    local stat = assert(vim.loop.fs_fstat(fd))
@@ -77,23 +78,20 @@ M.file = function(mode, filepath, content)
 end
 
 M.list_themes = function()
-   local themes = {}
+   local default_themes = vim.fn.readdir(vim.fn.stdpath "data" .. "/site/pack/packer/start/base46/lua/base46/themes")
 
-   local default_themes = vim.fn.stdpath "data" .. "/site/pack/packer/opt/base46/lua/base46/themes"
-   local user_themes = vim.fn.stdpath "config" .. "/lua/custom/themes"
+   local custom_theme_ok = pcall(require, "custom.themes")
 
-   -- list all theme files in above dirs into a table
-   local theme_paths = require("plenary.scandir").scan_dir({ default_themes, user_themes }, {})
-
-   -- trunacate absolute theme paths to just theme names
-   for _, theme in ipairs(theme_paths) do
-      local name = vim.fn.fnamemodify(theme, ":t")
-      name = vim.fn.fnamemodify(name, ":r")
-
-      themes[#themes + 1] = name
+   if custom_theme_ok then
+      local user_themes = fn.readdir(fn.stdpath "config" .. "/lua/custom/themes")
+      default_themes = vim.tbl_deep_extend("force", default_themes, user_themes)
    end
 
-   return themes
+   for index, theme in ipairs(default_themes) do
+      default_themes[index] = fn.fnamemodify(fn.fnamemodify(theme, ":t"), ":r")
+   end
+
+   return default_themes
 end
 
 -- reload themes without restarting vim
@@ -115,7 +113,7 @@ M.snap_delete = require "nvchad.updater.snap_delete"
 
 M.write_data = function(old_data, new_data)
    local file_fn = require("nvchad").file
-   local file = vim.fn.stdpath "config" .. "/lua/custom/" .. "chadrc.lua"
+   local file = fn.stdpath "config" .. "/lua/custom/" .. "chadrc.lua"
    local data = file_fn("r", file)
 
    local content = string.gsub(data, old_data, new_data)

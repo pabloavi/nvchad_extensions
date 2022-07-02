@@ -237,7 +237,7 @@ M.get_commit_list_by_hash_range = function(start_hash, end_hash)
    local commit_list_string = utils.cmd(
       "git -C "
       .. M.config_path
-      .. " log --oneline --no-merges --decorate --date=short --pretty='format:%ad: %h %s' "
+      .. " log --oneline --no-merges --decorate --date=short --pretty=\"format:%ad: %h %s\" "
       .. start_hash
       .. ".."
       .. end_hash,

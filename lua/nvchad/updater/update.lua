@@ -133,6 +133,11 @@ local function update()
       git.update_branch,
       "--rebase",
    }, " ")
+   
+   -- check if NvChad is running on windows and pipe the command through cmd.exe
+   if vim.fn.has 'win32' == 1 then
+      update_script = { 'cmd.exe', '/C', update_script }
+   end
 
    -- open a new buffer
    vim.cmd "new"

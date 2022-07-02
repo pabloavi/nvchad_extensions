@@ -38,7 +38,7 @@ end
 M.cmd = function(cmd, print_error)
    -- check if NvChad is running on windows and pipe the command through cmd.exe
    if vim.fn.has 'win32' == 1 then
-      cmd = 'cmd.exe /C ' .. cmd
+      cmd = { 'cmd.exe', '/C', cmd }
    end
 
    local result = fn.system(cmd)

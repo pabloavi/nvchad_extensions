@@ -36,6 +36,11 @@ end
 -- 2nd arg - a boolean to indicate whether to print possible errors
 -- returns the result if successful, nil otherwise
 M.cmd = function(cmd, print_error)
+   -- check if NvChad is running on windows and pipe the command through cmd.exe
+   if vim.fn.has 'win32' == 1 then
+      cmd = 'cmd.exe /C ' .. cmd
+   end
+
    local result = fn.system(cmd)
    if vim.api.nvim_get_vvar "shell_error" ~= 0 then
       if print_error then

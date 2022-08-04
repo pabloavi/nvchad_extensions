@@ -85,9 +85,7 @@ end
 M.list_themes = function()
   local default_themes = vim.fn.readdir(vim.fn.stdpath "data" .. "/site/pack/packer/start/base46/lua/base46/themes")
 
-  local custom_theme_ok = pcall(require, "custom.themes")
-
-  if custom_theme_ok then
+  if vim.fn.isdirectory(fn.stdpath "config" .. "/lua/custom/themes") then
     local user_themes = fn.readdir(fn.stdpath "config" .. "/lua/custom/themes")
     default_themes = vim.tbl_deep_extend("force", default_themes, user_themes)
   end

@@ -120,7 +120,7 @@ M.get_current_branch_name = function()
   local result = utils.cmd("git -C " .. M.config_path .. " rev-parse --abbrev-ref HEAD", false)
 
   if result then
-    return result:match "([%w\\_\\-.]*)"
+    return result:match "([%w\\_%-./]*)"
   end
 
   return ""

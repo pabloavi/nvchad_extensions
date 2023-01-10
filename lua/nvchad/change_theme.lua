@@ -1,3 +1,4 @@
+-- FIX: move this to core/config.lua
 local function change_theme(current_theme, new_theme)
   local misc = require "nvchad.utils.misc"
   local config = require "nvchad.utils.config"
@@ -9,13 +10,6 @@ local function change_theme(current_theme, new_theme)
 
   if current_theme == new_theme then
     return
-  end
-
-  local result = misc.ensure_file_exists(config.custom.default_chadrc_path, misc.get_example_chadrc())
-
-  if not result then
-    print "Error: Could not set a default theme. Please set it manually in your 'chadrc.lua'."
-    return false
   end
 
   -- escape characters which can be parsed as magic chars

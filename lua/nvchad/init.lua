@@ -117,9 +117,10 @@ M.snap_checkout = require "nvchad.updater.snap_checkout"
 -- delete snapshot
 M.snap_delete = require "nvchad.updater.snap_delete"
 
+-- TODO: check where this is used
 M.write_data = function(old_data, new_data)
   local file_fn = require("nvchad").file
-  local file = fn.stdpath "config" .. "/lua/custom/" .. "chadrc.lua"
+  local file = fn.stdpath "config" .. "/lua/core/config.lua"
   local data = file_fn("r", file)
 
   local content = string.gsub(data, old_data, new_data)
